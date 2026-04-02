@@ -63,9 +63,8 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
 .cal-day.today.cheat{border-color:var(--dn);}
 .cal-day.complete-cheat{background:rgba(34,197,94,0.12);color:var(--gn);font-weight:700;border:1px solid rgba(34,197,94,0.25);position:relative;}
 .cal-day.complete-cheat::after{content:'🍕';position:absolute;top:-4px;right:-2px;font-size:8px;}
-.cal-day.clickable{cursor:pointer;}
-.cal-day.complete-cheat{background:rgba(34,197,94,0.12);color:var(--gn);font-weight:700;border:1px solid rgba(34,197,94,0.25);position:relative;}
-.cal-day.complete-cheat::after{content:'🍕';position:absolute;top:-4px;right:-2px;font-size:8px;}
+.cal-day.partial-cheat{background:rgba(234,179,8,0.1);color:var(--yw);font-weight:700;border:1px solid rgba(234,179,8,0.2);position:relative;}
+.cal-day.partial-cheat::after{content:'🍕';position:absolute;top:-4px;right:-2px;font-size:8px;}
 .cal-day.clickable{cursor:pointer;}
 .cal-day.clickable:active{opacity:0.6;}
 .del-check{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--bd);background:var(--cd);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;}
@@ -639,12 +638,14 @@ function getDayStatus(dateStr){
     const scn=scenarios.find(s=>s.id===log.scenario);
     if(scn){
       const total=scn.meals.length;
-      const done=scn.meals.filter(m=>log.meals[m.id]!==undefined).length;
-      if(done>=total) mealStatus='complete';
-      else if(done>0) mealStatus='partial';
+      const marked=scn.meals.filter(m=>log.meals[m.id]!==undefined).length;
+      const done=scn.meals.filter(m=>log.meals[m.id]===true).length;
+      if(marked>=total) mealStatus=(done===total)?'complete':'partial';
+      else if(marked>0) mealStatus='partial';
     }
   }
   if(mealStatus==='complete'&&isCheat) return 'complete-cheat';
+  if(mealStatus==='partial'&&isCheat) return 'partial-cheat';
   if(isCheat) return 'cheat';
   return mealStatus;
 }
