@@ -236,33 +236,33 @@ const DEFAULT_SCENARIOS = [
   { id:"tarde", label:"🏋️ Entreno Tarde", short:"Tarde",
     meals:[
       {id:"desayuno",time:"10:00",icon:"🥞🍳",name:"Desayuno Proteico",desc:"2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano",prot:54,carbs:43,fat:27},
-      {id:"almuerzo",time:"13:30",icon:"🌯",name:"Burrito + Arroz",desc:"Carne o pollo + huevo + verdeo + morrón + 1 taza arroz",prot:45,carbs:80,fat:20},
+      {id:"almuerzo",time:"13:30",icon:"🌯",name:"Burrito + Arroz",desc:"Carne o pollo + huevo + verdeo + morrón + 1 taza arroz",prot:45,carbs:80,fat:20,flexible:true},
       {id:"pre",time:"17:00",icon:"🍌",name:"Pre-Entreno",desc:"1 banana — energía rápida para el gym",prot:0,carbs:30,fat:0,training:true},
       {id:"meripost",time:"19:30",icon:"🫐🥤",name:"Post-Entreno + Merienda",desc:"Yogur griego + chía + 1 scoop whey (25g) + arándanos + 1 panqueque",prot:51,carbs:38,fat:15,training:true},
-      {id:"cena",time:"22:00",icon:"🏠",name:"Cena: Lo que haya",desc:"Priorizá proteína. Si es pasta/pizza: porción chica + 1 scoop whey",prot:30,carbs:0,fat:15,zeroCarbos:true},
+      {id:"cena",time:"22:00",icon:"🏠",name:"Cena: Lo que haya",desc:"Priorizá proteína. Si es pasta/pizza: porción chica + 1 scoop whey",prot:30,carbs:0,fat:15,zeroCarbos:true,flexible:true},
     ]
   },
   { id:"manana", label:"🌅 Entreno Mañana", short:"Mañana",
     meals:[
       {id:"pre",time:"08:30",icon:"🥞🍌",name:"Pre-Entreno",desc:"2 panqueques (con chía en la mezcla) + 1 banana",prot:32,carbs:73,fat:9,training:true},
       {id:"post",time:"12:00",icon:"🥤",name:"Post-Entreno",desc:"1 scoop whey (25g) con agua",prot:25,carbs:0,fat:0,training:true},
-      {id:"almuerzo",time:"13:00",icon:"🏠",name:"Almuerzo: Lo que haya + Arroz",desc:"Carne/pollo de la heladera o recalentado + 1 taza arroz. Si no hay proteína: sumá huevos",prot:40,carbs:50,fat:18},
+      {id:"almuerzo",time:"13:00",icon:"🏠",name:"Almuerzo: Lo que haya + Arroz",desc:"Carne/pollo de la heladera o recalentado + 1 taza arroz. Si no hay proteína: sumá huevos",prot:40,carbs:50,fat:18,flexible:true},
       {id:"merienda",time:"17:00",icon:"🥜🥞",name:"Merienda Facu",desc:"Shaker whey (25g) + 1 cda mantequilla de maní + panqueque con chía + banana",prot:46,carbs:56,fat:17},
-      {id:"cena",time:"21:00",icon:"🥗",name:"Cena: Bowl o Burrito Mealprep",desc:"Carne/pollo + huevo + verduras + palta. En bowl (0 carbos) o con Rapidita (+30g carbs)",prot:47,carbs:6,fat:30,zeroCarbos:true},
+      {id:"cena",time:"21:00",icon:"🥗",name:"Cena: Bowl o Burrito Mealprep",desc:"Carne/pollo + huevo + verduras + palta. En bowl (0 carbos) o con Rapidita (+30g carbs)",prot:47,carbs:6,fat:30,zeroCarbos:true,flexible:true},
     ]
   },
   { id:"descanso", label:"😴 Descanso", short:"Descanso",
     meals:[
       {id:"desayuno",time:"10:00",icon:"🥞🍳",name:"Desayuno Proteico",desc:"2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano",prot:54,carbs:43,fat:27},
-      {id:"almuerzo",time:"13:30",icon:"🌯",name:"Burrito + Medio Arroz",desc:"Carne o pollo + huevo + verduras + ½ taza arroz",prot:45,carbs:55,fat:20},
+      {id:"almuerzo",time:"13:30",icon:"🌯",name:"Burrito + Medio Arroz",desc:"Carne o pollo + huevo + verduras + ½ taza arroz",prot:45,carbs:55,fat:20,flexible:true},
       {id:"merienda",time:"17:00",icon:"🫐🥞",name:"Merienda Proteica",desc:"Yogur griego + chía + 1 scoop whey (25g) + arándanos + 1 panqueque",prot:47,carbs:38,fat:15},
-      {id:"cena",time:"20:00",icon:"🏠",name:"Cena: Lo que haya",desc:"Priorizá proteína. Evitá solo carbos. Si no hay proteína: 1 scoop whey",prot:30,carbs:0,fat:15,zeroCarbos:true},
+      {id:"cena",time:"20:00",icon:"🏠",name:"Cena: Lo que haya",desc:"Priorizá proteína. Evitá solo carbos. Si no hay proteína: 1 scoop whey",prot:30,carbs:0,fat:15,zeroCarbos:true,flexible:true},
     ]
   },
   { id:"futbol", label:"⚽ Fútbol Noche", short:"Fútbol",
     meals:[
       {id:"desayuno",time:"10:00",icon:"🥞🍳",name:"Desayuno Proteico",desc:"2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano",prot:54,carbs:43,fat:27},
-      {id:"almuerzo",time:"13:30",icon:"🌯",name:"Burrito + Arroz",desc:"Carne o pollo + huevo + verduras + 1 taza arroz",prot:45,carbs:80,fat:20},
+      {id:"almuerzo",time:"13:30",icon:"🌯",name:"Burrito + Arroz",desc:"Carne o pollo + huevo + verduras + 1 taza arroz",prot:45,carbs:80,fat:20,flexible:true},
       {id:"merienda",time:"16:00",icon:"🫐🥞",name:"Merienda Proteica",desc:"Yogur griego + chía + 1 scoop whey (25g) + arándanos + 1 panqueque",prot:47,carbs:38,fat:15},
       {id:"pre",time:"18:30",icon:"🍌",name:"Pre-Fútbol",desc:"Banana + barrita de cereal o pasas",prot:3,carbs:50,fat:2,training:true},
       {id:"post",time:"23:00",icon:"🥤",name:"Post-Fútbol",desc:"1 scoop whey (25g) con agua — liviano, es tarde",prot:25,carbs:0,fat:0,training:true},
@@ -272,6 +272,27 @@ const DEFAULT_SCENARIOS = [
 
 let scenarios;
 const CHEAT_INTERVAL = 4;
+
+const PROTEINS = [
+  {id:'carne', name:'Carne', emoji:'🥩', prot:39, carbs:0, fat:15},
+  {id:'pollo', name:'Pollo', emoji:'🍗', prot:47, carbs:0, fat:5},
+  {id:'atun', name:'Atún (1 lata)', emoji:'🐟', prot:38, carbs:0, fat:2},
+  {id:'salmon', name:'Salmón', emoji:'🍣', prot:33, carbs:0, fat:18},
+  {id:'huevos', name:'Huevos (3)', emoji:'🥚', prot:20, carbs:1, fat:16},
+  {id:'cerdo', name:'Cerdo', emoji:'🐷', prot:38, carbs:0, fat:12},
+];
+
+const SIDES = [
+  {id:'arroz', name:'Arroz (1 taza)', emoji:'🍚', prot:4, carbs:45, fat:0},
+  {id:'ensalada', name:'Ensalada/Verduras', emoji:'🥗', prot:2, carbs:6, fat:5},
+  {id:'papa', name:'Papa (1 mediana)', emoji:'🥔', prot:3, carbs:26, fat:0},
+  {id:'rapidita', name:'Rapidita/Pan', emoji:'🫓', prot:3, carbs:18, fat:2},
+  {id:'nada', name:'Sin acompañamiento', emoji:'❌', prot:0, carbs:0, fat:0},
+];
+
+function isMealDone(val){return val===true||(val&&typeof val==='object'&&val.custom);}
+function isFlexible(m){return m.flexible||m.id==='almuerzo'||m.id==='cena';}
+function customMealLabel(v){const p=PROTEINS.find(x=>x.id===v.protein);const s=SIDES.find(x=>x.id===v.side);if(!p) return '🍽️ Custom';return s&&s.id!=='nada'?p.emoji+' '+p.name+' + '+s.emoji+' '+s.name:p.emoji+' '+p.name;}
 
 function scnMacros(scn){
   const p=scn.meals.reduce((s,m)=>s+(m.prot||0),0);
@@ -298,7 +319,7 @@ function dayKcal(dateStr){
   const scn=scenarios.find(s=>s.id===log.scenario);
   if(!scn) return 0;
   let kcal=0;
-  scn.meals.forEach(m=>{if(log.meals[m.id]===true) kcal+=mealKcal(m);});
+  scn.meals.forEach(m=>{const v=log.meals[m.id];if(isMealDone(v)) kcal+=(v&&v.custom)?v.prot*4+v.carbs*4+v.fat*9:mealKcal(m);});
   const cheats=cheatLog.filter(c=>c.date===dateStr);
   cheats.forEach(c=>{kcal+=(c.kcal||0);});
   return kcal;
@@ -393,6 +414,71 @@ function skipMeal(mealId){
   renderToday();
 }
 
+function openCustomMeal(mealId){
+  window._customMealId=mealId;
+  window._customProtein=null;
+  renderCustomStep1();
+  $("modal").classList.add("show");
+}
+
+function renderCustomStep1(){
+  let html='<div style="font-size:18px;font-weight:800;margin-bottom:4px">¿Qué proteína comiste?</div>';
+  html+='<div class="text-sm text-mt mb-18">Elegí una opción</div>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  PROTEINS.forEach(p=>{
+    html+=`<button onclick="pickProtein('${p.id}')" style="background:var(--cd);border:1.5px solid var(--bd);border-radius:14px;padding:18px 12px;cursor:pointer;text-align:center;color:var(--tx)">
+      <div style="font-size:28px;margin-bottom:6px">${p.emoji}</div>
+      <div class="fw-700" style="font-size:14px">${p.name}</div>
+      <div class="text-xs text-mt mt-4 mono">${p.prot}p · ${p.fat}f</div>
+    </button>`;
+  });
+  html+='</div>';
+  html+='<button class="btn-out mt-20" onclick="closeModal()">Cancelar</button>';
+  $("modal-content").innerHTML=html;
+}
+
+function pickProtein(protId){
+  window._customProtein=PROTEINS.find(p=>p.id===protId);
+  renderCustomStep2();
+}
+
+function renderCustomStep2(){
+  const prot=window._customProtein;
+  let html='<div style="font-size:18px;font-weight:800;margin-bottom:4px">¿Acompañamiento?</div>';
+  html+=`<div class="text-sm text-mt mb-18">${prot.emoji} ${prot.name} seleccionado</div>`;
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  SIDES.forEach(s=>{
+    const total=prot.prot+s.prot;
+    const kcal=(prot.prot+s.prot)*4+(prot.carbs+s.carbs)*4+(prot.fat+s.fat)*9;
+    html+=`<button onclick="pickSide('${s.id}')" style="background:var(--cd);border:1.5px solid var(--bd);border-radius:14px;padding:18px 12px;cursor:pointer;text-align:center;color:var(--tx)">
+      <div style="font-size:28px;margin-bottom:6px">${s.emoji}</div>
+      <div class="fw-700" style="font-size:14px">${s.name}</div>
+      <div class="text-xs text-mt mt-4 mono">${kcal} kcal</div>
+    </button>`;
+  });
+  html+='</div>';
+  html+='<button class="btn-out mt-20" onclick="renderCustomStep1()">← Volver</button>';
+  $("modal-content").innerHTML=html;
+}
+
+function pickSide(sideId){
+  const prot=window._customProtein;
+  const side=SIDES.find(s=>s.id===sideId);
+  const mealId=window._customMealId;
+  const log=getDayLog(activeDate);
+  log.meals[mealId]={
+    custom:true,
+    protein:prot.id,
+    side:side.id,
+    prot:prot.prot+side.prot,
+    carbs:prot.carbs+side.carbs,
+    fat:prot.fat+side.fat
+  };
+  save("food-log",mealLog);
+  closeModal();
+  renderToday();
+}
+
 function uncheckLast(){
   const log=getDayLog(activeDate);
   const scn=scenarios.find(s=>s.id===log.scenario);
@@ -444,12 +530,12 @@ function renderToday(){
 
   const scn=scenarios.find(s=>s.id===log.scenario);
   const total=scn.meals.length;
-  const done=scn.meals.filter(m=>log.meals[m.id]===true).length;
+  const done=scn.meals.filter(m=>isMealDone(log.meals[m.id])).length;
   const marked=scn.meals.filter(m=>log.meals[m.id]!==undefined).length;
   const pct=Math.round((marked/total)*100);
   const nextMeal=scn.meals.find(m=>log.meals[m.id]===undefined);
   const totalMacros=scnMacros(scn);
-  const consumedKcal=scn.meals.filter(m=>log.meals[m.id]===true).reduce((s,m)=>s+mealKcal(m),0);
+  const consumedKcal=scn.meals.filter(m=>isMealDone(log.meals[m.id])).reduce((s,m)=>{const v=log.meals[m.id];return s+((v&&v.custom)?v.prot*4+v.carbs*4+v.fat*9:mealKcal(m));},0);
 
   let html='<div class="sec">';
 
@@ -479,21 +565,29 @@ function renderToday(){
         <div class="flex gap-8 mt-12" style="flex-wrap:wrap">${mealTags(nextMeal)}</div>
       </div>
       <div class="flex gap-8" style="margin-top:12px">
+        ${isFlexible(nextMeal)?`
+        <button class="btn" onclick="checkMeal('${nextMeal.id}')" style="flex:2;padding:20px;font-size:16px">✓ Del plan</button>
+        <button class="btn-out" onclick="openCustomMeal('${nextMeal.id}')" style="flex:2;padding:20px;font-size:16px;color:var(--ac);border-color:rgba(230,149,0,0.3)">🔄 Otro</button>
+        <button class="btn-out" onclick="skipMeal('${nextMeal.id}')" style="flex:1;padding:20px;font-size:14px;color:var(--dn);border-color:rgba(239,68,68,0.3)">✕</button>
+        `:`
         <button class="btn" onclick="checkMeal('${nextMeal.id}')" style="flex:3;padding:20px;font-size:18px">✓ Listo</button>
         <button class="btn-out" onclick="skipMeal('${nextMeal.id}')" style="flex:1;padding:20px;font-size:14px;color:var(--dn);border-color:rgba(239,68,68,0.3)">✕</button>
+        `}
       </div>
     </div>`;
 
     // Checked meals (compact)
-    const checkedMeals=scn.meals.filter(m=>log.meals[m.id]===true);
+    const checkedMeals=scn.meals.filter(m=>isMealDone(log.meals[m.id]));
     const skippedMeals=scn.meals.filter(m=>log.meals[m.id]==='skipped');
     if(checkedMeals.length||skippedMeals.length){
       html+=`<div class="text-xs text-mt fw-600 mb-8" style="text-transform:uppercase;letter-spacing:1.5px">Completadas</div>`;
       checkedMeals.forEach(m=>{
+        const v=log.meals[m.id];
+        const label=(v&&v.custom)?customMealLabel(v):m.icon+' '+m.name;
         html+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)22">
           <span style="color:var(--gn);font-size:16px">✓</span>
           <span class="mono text-mt" style="font-size:11px;min-width:40px">${m.time}</span>
-          <span class="text-sm fw-600" style="color:var(--gn)">${m.icon} ${m.name}</span>
+          <span class="text-sm fw-600" style="color:var(--gn)">${label}</span>
         </div>`;
       });
       skippedMeals.forEach(m=>{
@@ -527,11 +621,13 @@ function renderToday(){
       <div class="text-sm text-mt">${allDone?'Todas las comidas cumplidas. Bien ahí.':`${done}/${total} comidas cumplidas.`}</div>
     </div>`;
     scn.meals.forEach(m=>{
-      const ok=log.meals[m.id]===true;
+      const v=log.meals[m.id];
+      const ok=isMealDone(v);
+      const label=(v&&v.custom)?customMealLabel(v):m.icon+' '+m.name;
       html+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)22">
         <span style="color:${ok?'var(--gn)':'var(--dn)'};font-size:16px">${ok?'✓':'✕'}</span>
         <span class="mono text-mt" style="font-size:11px;min-width:40px">${m.time}</span>
-        <span class="text-sm fw-600" style="color:${ok?'var(--gn)':'var(--dn)'};${ok?'':'text-decoration:line-through'}">${m.icon} ${m.name}</span>
+        <span class="text-sm fw-600" style="color:${ok?'var(--gn)':'var(--dn)'};${ok?'':'text-decoration:line-through'}">${label}</span>
       </div>`;
     });
   }
@@ -639,7 +735,7 @@ function getDayStatus(dateStr){
     if(scn){
       const total=scn.meals.length;
       const marked=scn.meals.filter(m=>log.meals[m.id]!==undefined).length;
-      const done=scn.meals.filter(m=>log.meals[m.id]===true).length;
+      const done=scn.meals.filter(m=>isMealDone(log.meals[m.id])).length;
       if(marked>=total) mealStatus=(done===total)?'complete':'partial';
       else if(marked>0) mealStatus='partial';
     }
