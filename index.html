@@ -187,6 +187,15 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   </div>
 </div>
 
+<!-- ══ PROGRESO ══ -->
+<div id="pg-progress" class="page">
+  <div class="header">
+    <div class="logo">PROGRESO</div>
+    <div style="width:44px"></div>
+  </div>
+  <div id="progress-content" class="sec"></div>
+</div>
+
 <!-- ══ CONFIG ══ -->
 <div id="pg-config" class="page">
   <div class="header">
@@ -231,6 +240,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="nav-item" onclick="navTo('pg-plans')"><span class="nav-icon">📋</span>Planes</div>
   <div class="nav-item" onclick="navTo('pg-cal')"><span class="nav-icon">📅</span>Calendario</div>
   <div class="nav-item" onclick="navTo('pg-cheat')"><span class="nav-icon">🍕</span>Cheat</div>
+  <div class="nav-item" onclick="navTo('pg-progress')"><span class="nav-icon">📊</span>Progreso</div>
 </div>
 
 <!-- Modal -->
@@ -453,7 +463,7 @@ function navTo(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   $(id).classList.add('active');
   document.querySelectorAll('.nav-item').forEach((n,i)=>{
-    const pages=['pg-today','pg-plans','pg-cal','pg-cheat'];
+    const pages=['pg-today','pg-plans','pg-cal','pg-cheat','pg-progress'];
     n.classList.toggle('active',pages[i]===id);
   });
   window.scrollTo(0,0);
@@ -461,6 +471,7 @@ function navTo(id){
   if(id==='pg-cal') renderCal();
   if(id==='pg-cheat') renderCheat();
   if(id==='pg-del') renderDelDays();
+  if(id==='pg-progress') renderProgress();
 }
 
 function closeModal(){$("modal").classList.remove('show');}
@@ -1074,6 +1085,282 @@ function deleteSelectedDays(){
   save("food-log",mealLog);
   selectedDelDays=new Set();
   renderDelDays();
+}
+
+// ── Profile & Progress ──
+function calcTDEE(){
+  const profile=load('food-profile',null);
+  if(!profile||!profile.altura||!profile.edad) return null;
+  const weights=load('food-weight',[]);
+  const latestWeight=weights.length?[...weights].sort((a,b)=>b.date.localeCompare(a.date))[0].kg:85;
+  const sex=profile.sexo||'M';
+  let bmr;
+  if(sex==='M') bmr=10*latestWeight+6.25*profile.altura-5*profile.edad+5;
+  else bmr=10*latestWeight+6.25*profile.altura-5*profile.edad-161;
+  return Math.round(bmr*(profile.factor||1.5));
+}
+
+function calcWeightTrend(){
+  const weights=[...load('food-weight',[])].sort((a,b)=>a.date.localeCompare(b.date));
+  if(weights.length<2) return null;
+  const today=td();
+  const cursor=new Date(today+"T12:00:00Z");
+  cursor.setUTCDate(cursor.getUTCDate()-28);
+  const cutoff=cursor.toISOString().slice(0,10);
+  const recent=weights.filter(w=>w.date>=cutoff);
+  if(recent.length<2) return null;
+  const first=recent[0], last=recent[recent.length-1];
+  const daysSpan=(new Date(last.date+"T12:00:00Z")-new Date(first.date+"T12:00:00Z"))/86400000;
+  if(daysSpan<7) return null;
+  return ((last.kg-first.kg)/daysSpan)*7;
+}
+
+function analyzeWindow(daysBack){
+  daysBack=daysBack||28;
+  const today=td();
+  const dates=[];
+  const cursor=new Date(today+"T12:00:00Z");
+  for(let i=0;i<daysBack;i++){
+    dates.push(cursor.toISOString().slice(0,10));
+    cursor.setUTCDate(cursor.getUTCDate()-1);
+  }
+  const loggedDays=dates.filter(d=>mealLog[d]&&mealLog[d].scenario);
+  let planKcal=0;
+  loggedDays.forEach(d=>{
+    const log=mealLog[d];
+    const scn=scenarios.find(s=>s.id===log.scenario);
+    if(!scn) return;
+    scn.meals.forEach(m=>{
+      const v=log.meals[m.id];
+      if(isMealDone(v)) planKcal+=(v&&v.custom)?v.prot*4+v.carbs*4+v.fat*9:mealKcal(m);
+    });
+  });
+  const cheats=cheatLog.filter(c=>dates.includes(c.date));
+  const cheatKcal=cheats.reduce((s,c)=>s+(c.kcal||0),0);
+  const planAvg=loggedDays.length>0?planKcal/loggedDays.length:0;
+  const cheatAvg=cheatKcal/daysBack;
+  const avgConsumed=planAvg+cheatAvg;
+  const tdee=calcTDEE();
+  const deficit=tdee?tdee-avgConsumed:null;
+  const expectedKgLoss=deficit?(deficit*daysBack)/7700:null;
+  let realKgLoss=null, adjustedTDEE=null;
+  const weights=[...load('food-weight',[])].sort((a,b)=>a.date.localeCompare(b.date));
+  const winWeights=weights.filter(w=>dates.includes(w.date));
+  if(winWeights.length>=2){
+    realKgLoss=winWeights[0].kg-winWeights[winWeights.length-1].kg;
+    if(avgConsumed>0) adjustedTDEE=Math.round(avgConsumed+(realKgLoss*7700/daysBack));
+  }
+  return {
+    daysTotal:daysBack, daysLogged:loggedDays.length,
+    completeness:loggedDays.length/daysBack,
+    avgConsumed, planAvg, cheatAvg, cheatCount:cheats.length,
+    tdee, deficit, expectedKgLoss, realKgLoss, adjustedTDEE,
+  };
+}
+
+function drawWeightChart(){
+  const weights=[...load('food-weight',[])].sort((a,b)=>a.date.localeCompare(b.date));
+  if(weights.length<2) return '';
+  const today=td();
+  const cursor=new Date(today+"T12:00:00Z");
+  cursor.setUTCDate(cursor.getUTCDate()-84);
+  const cutoff=cursor.toISOString().slice(0,10);
+  const data=weights.filter(w=>w.date>=cutoff);
+  if(data.length<2) return '<div class="text-xs text-mt" style="text-align:center;padding:12px 0">Sin datos en últimas 12 sem</div>';
+  const kgs=data.map(d=>d.kg);
+  const minKg=Math.min(...kgs), maxKg=Math.max(...kgs);
+  const pad=Math.max((maxKg-minKg)*0.15,0.5);
+  const yMin=minKg-pad, yMax=maxKg+pad, yRange=yMax-yMin;
+  const firstDate=new Date(data[0].date+"T12:00:00Z");
+  const lastDate=new Date(data[data.length-1].date+"T12:00:00Z");
+  const totalDays=Math.max((lastDate-firstDate)/86400000,1);
+  const W=320, H=110, xPad=34, yPad=12;
+  const points=data.map(d=>{
+    const date=new Date(d.date+"T12:00:00Z");
+    const days=(date-firstDate)/86400000;
+    const x=xPad+(days/totalDays)*(W-xPad-10);
+    const y=yPad+(1-(d.kg-yMin)/yRange)*(H-2*yPad);
+    return [x.toFixed(1),y.toFixed(1)];
+  });
+  const polyline=points.map(p=>p.join(',')).join(' ');
+  const dots=points.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="var(--ac)"/>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="120" style="display:block;margin-top:8px">
+    <text x="2" y="${yPad+8}" fill="var(--mt)" font-size="10" font-family="JetBrains Mono">${yMax.toFixed(1)}</text>
+    <text x="2" y="${H-yPad+2}" fill="var(--mt)" font-size="10" font-family="JetBrains Mono">${yMin.toFixed(1)}</text>
+    <polyline points="${polyline}" stroke="var(--ac)" fill="none" stroke-width="2"/>
+    ${dots}
+  </svg>`;
+}
+
+function renderStatusBanner(trend){
+  let status, emoji, msg, color;
+  if(trend===null){
+    status='Sin datos suficientes'; emoji='ℹ'; color='var(--mt)';
+    msg='Registrá peso 2 veces aparte ≥7 días para ver tendencia';
+  } else if(trend<-0.6){
+    status='Muy rápido'; emoji='⚠'; color='var(--dn)';
+    msg=`${trend.toFixed(2)} kg/sem · riesgo pérdida muscular. Subí +300-500 kcal.`;
+  } else if(trend<=-0.25){
+    status='En target'; emoji='✓'; color='var(--gn)';
+    msg=`${trend.toFixed(2)} kg/sem · cut sostenible`;
+  } else if(trend<=0.1){
+    status='Muy lento'; emoji='⚠'; color='var(--yw)';
+    msg=`${trend.toFixed(2)} kg/sem · reducí cheats o bajá kcal`;
+  } else {
+    status='Subiendo'; emoji='↑'; color='var(--yw)';
+    msg=`+${trend.toFixed(2)} kg/sem`;
+  }
+  return `<div class="card" style="cursor:default;border-color:${color};text-align:center;padding:24px 20px">
+    <div style="font-size:40px;color:${color};margin-bottom:6px;line-height:1">${emoji}</div>
+    <div style="font-size:22px;font-weight:800;color:${color};margin-bottom:8px">${status}</div>
+    <div class="text-sm" style="color:#a0a0b0;line-height:1.5">${msg}</div>
+  </div>`;
+}
+
+function renderAnalysisCard(a){
+  const confColor=a.completeness>=0.8?'var(--gn)':a.completeness>=0.5?'var(--yw)':'var(--dn)';
+  const planPct=a.avgConsumed>0?Math.round(a.planAvg/a.avgConsumed*100):0;
+  const cheatPct=a.avgConsumed>0?Math.round(a.cheatAvg/a.avgConsumed*100):0;
+  const deficitSign=a.deficit>0?'-':'+';
+  const deficitColor=a.deficit>0?'var(--gn)':'var(--dn)';
+  let html=`<div class="card" style="cursor:default">
+    <div class="text-xs text-mt fw-600 mb-12">ANÁLISIS · ÚLTIMAS 4 SEMANAS</div>
+    <div class="row mb-8">
+      <span class="text-sm">Días con data</span>
+      <span class="mono fw-700" style="color:${confColor}">${a.daysLogged}/${a.daysTotal} (${Math.round(a.completeness*100)}%)</span>
+    </div>
+    <div style="height:1px;background:var(--bd);margin:12px 0"></div>
+    <div class="row mb-4">
+      <span class="text-sm fw-700">Consumo promedio</span>
+      <span class="mono fw-800 text-ac">${Math.round(a.avgConsumed)} kcal/día</span>
+    </div>
+    <div class="row text-xs text-mt" style="margin-bottom:2px"><span>↳ del plan</span><span class="mono">${Math.round(a.planAvg)} (${planPct}%)</span></div>
+    <div class="row text-xs text-mt"><span>↳ cheats (${a.cheatCount})</span><span class="mono">${Math.round(a.cheatAvg)} (${cheatPct}%)</span></div>`;
+  if(a.tdee){
+    html+=`<div style="height:1px;background:var(--bd);margin:12px 0"></div>
+    <div class="row mb-8"><span class="text-sm">TDEE estimado</span><span class="mono fw-700">${a.tdee} kcal/día</span></div>
+    <div class="row mb-4"><span class="text-sm fw-700">Déficit promedio</span><span class="mono fw-800" style="color:${deficitColor}">${deficitSign}${Math.abs(Math.round(a.deficit))} kcal/día</span></div>`;
+  }
+  if(a.realKgLoss!==null){
+    html+=`<div style="height:1px;background:var(--bd);margin:12px 0"></div>
+    <div class="row mb-8"><span class="text-sm">Pérdida esperada</span><span class="mono fw-700">${a.expectedKgLoss.toFixed(2)} kg</span></div>
+    <div class="row mb-8"><span class="text-sm">Pérdida real</span><span class="mono fw-700">${a.realKgLoss.toFixed(2)} kg</span></div>`;
+    if(a.adjustedTDEE){
+      const diff=a.adjustedTDEE-a.tdee;
+      html+=`<div class="row"><span class="text-sm">TDEE real estimado</span><span class="mono fw-700 text-ac">${a.adjustedTDEE} (${diff>=0?'+':''}${diff})</span></div>`;
+    }
+  } else {
+    html+=`<div class="text-xs text-mt" style="text-align:center;margin-top:12px">Registrá 2+ pesos en estas 4 sem para ver pérdida real</div>`;
+  }
+  html+='</div>';
+  return html;
+}
+
+function renderProgress(){
+  const profile=load('food-profile',null);
+  const hasProfile=profile&&profile.altura&&profile.edad;
+  let html='';
+  if(!hasProfile){
+    html+=`<div class="card" style="cursor:default;text-align:center;padding:30px 20px">
+      <div style="font-size:48px;margin-bottom:12px">📊</div>
+      <div style="font-size:18px;font-weight:800;margin-bottom:8px">Configurá tu perfil</div>
+      <div class="text-sm text-mt" style="margin-bottom:18px">Para calcular TDEE y déficit (15s)</div>
+      <button class="btn" onclick="openProfileModal()">Configurar perfil</button>
+    </div>`;
+  } else {
+    html+=renderStatusBanner(calcWeightTrend());
+    html+=renderAnalysisCard(analyzeWindow(28));
+  }
+  const weights=load('food-weight',[]);
+  const sorted=[...weights].sort((a,b)=>b.date.localeCompare(a.date));
+  const latest=sorted[0];
+  html+=`<div class="card" style="cursor:default">
+    <div class="text-xs text-mt fw-600 mb-8">PESO</div>
+    ${latest?`<div class="big-num">${latest.kg} <span class="text-sm text-mt">kg</span></div><div class="text-xs text-mt mt-4">${fdLong(latest.date)}</div>`:'<div class="text-sm text-mt mt-4">Sin registros aún</div>'}
+    ${weights.length>=2?drawWeightChart():''}
+    <button class="btn mt-12" onclick="openWeightModal()">+ Registrar peso</button>
+  </div>`;
+  if(hasProfile){
+    const tdee=calcTDEE();
+    const factorLabel=profile.factor>=1.65?'Activo':profile.factor>=1.55?'Poco activo':'Sedentario';
+    html+=`<div class="card" style="cursor:default">
+      <div class="row">
+        <div>
+          <div class="text-xs text-mt fw-600">PERFIL</div>
+          <div class="text-sm mt-4">${profile.altura}cm · ${profile.edad} años · ${factorLabel}</div>
+          <div class="text-xs text-mt mt-4">TDEE base: <span class="mono fw-700 text-ac">${tdee} kcal/día</span></div>
+        </div>
+        <button class="icon-btn" onclick="openProfileModal()">✎</button>
+      </div>
+    </div>`;
+  }
+  $('progress-content').innerHTML=html;
+}
+
+function openProfileModal(){
+  const profile=load('food-profile',{altura:'',edad:'',sexo:'M',factor:1.5});
+  const lab='font-size:11px;color:var(--mt);font-weight:600;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px';
+  const inp='background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;font-size:16px;color:var(--tx);width:100%;box-sizing:border-box;outline:none';
+  const inpN=inp+';font-family:var(--fm);font-weight:700;text-align:center';
+  let html=`<div style="font-size:18px;font-weight:800;margin-bottom:16px">Tu perfil</div>`;
+  html+=`<div class="mb-12"><label style="${lab}">Altura (cm)</label><input id="prf-altura" type="number" inputmode="numeric" value="${profile.altura||''}" placeholder="182" style="${inpN}"></div>`;
+  html+=`<div class="mb-12"><label style="${lab}">Edad (años)</label><input id="prf-edad" type="number" inputmode="numeric" value="${profile.edad||''}" placeholder="25" style="${inpN}"></div>`;
+  html+=`<div class="mb-12"><label style="${lab}">Sexo</label><select id="prf-sexo" style="${inp}"><option value="M"${profile.sexo!=='F'?' selected':''}>Hombre</option><option value="F"${profile.sexo==='F'?' selected':''}>Mujer</option></select></div>`;
+  html+=`<div class="mb-18"><label style="${lab}">Nivel de actividad</label><select id="prf-factor" style="${inp}">
+    <option value="1.5"${profile.factor==1.5?' selected':''}>Sedentario + entreno</option>
+    <option value="1.6"${profile.factor==1.6?' selected':''}>Poco activo + entreno</option>
+    <option value="1.7"${profile.factor==1.7?' selected':''}>Activo + entreno</option>
+  </select><div class="text-xs text-mt mt-4" style="line-height:1.4">Sedentario = oficina/escritorio. Poco activo = caminás algo. Activo = movimiento todo el día.</div></div>`;
+  html+=`<button class="btn" style="margin-bottom:12px" onclick="saveProfile()">Guardar</button>`;
+  html+=`<button class="btn-out" onclick="closeModal()">Cancelar</button>`;
+  $('modal-content').innerHTML=html;
+  $('modal').classList.add('show');
+}
+
+function saveProfile(){
+  const altura=parseInt($('prf-altura').value);
+  const edad=parseInt($('prf-edad').value);
+  const sexo=$('prf-sexo').value;
+  const factor=parseFloat($('prf-factor').value);
+  if(!altura||!edad||altura<100||altura>250||edad<10||edad>100){
+    alert('Completá altura y edad válidos');
+    return;
+  }
+  save('food-profile',{altura,edad,sexo,factor});
+  closeModal();
+  renderProgress();
+}
+
+function openWeightModal(){
+  const weights=load('food-weight',[]);
+  const latest=weights.length?[...weights].sort((a,b)=>b.date.localeCompare(a.date))[0]:null;
+  const defaultKg=latest?latest.kg:80;
+  const lab='font-size:11px;color:var(--mt);font-weight:600;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px';
+  const inp='background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;font-size:16px;color:var(--tx);width:100%;box-sizing:border-box;outline:none';
+  const inpN='background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;font-size:22px;color:var(--tx);width:100%;box-sizing:border-box;outline:none;font-family:var(--fm);font-weight:800;text-align:center';
+  let html=`<div style="font-size:18px;font-weight:800;margin-bottom:16px">Registrar peso</div>`;
+  html+=`<div class="mb-12"><label style="${lab}">Fecha</label><input id="wt-date" type="date" value="${td()}" max="${td()}" style="${inp}"></div>`;
+  html+=`<div style="margin-bottom:18px"><label style="${lab}">Peso (kg)</label><input id="wt-kg" type="number" inputmode="decimal" step="0.1" value="${defaultKg}" style="${inpN}"></div>`;
+  html+=`<button class="btn" style="margin-bottom:12px" onclick="saveWeight()">Guardar</button>`;
+  html+=`<button class="btn-out" onclick="closeModal()">Cancelar</button>`;
+  $('modal-content').innerHTML=html;
+  $('modal').classList.add('show');
+}
+
+function saveWeight(){
+  const date=$('wt-date').value;
+  const kg=parseFloat($('wt-kg').value);
+  if(!date||!kg||kg<30||kg>250){
+    alert('Datos inválidos');
+    return;
+  }
+  const weights=load('food-weight',[]);
+  const idx=weights.findIndex(w=>w.date===date);
+  if(idx>=0) weights[idx]={date,kg};
+  else weights.push({date,kg});
+  save('food-weight',weights);
+  closeModal();
+  renderProgress();
 }
 
 // ── Streak & Celebrate ──
