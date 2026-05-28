@@ -257,7 +257,7 @@ const DEFAULT_SCENARIOS = [
       {id:"pre",time:"08:30",icon:"🥞🍌",name:"Pre-Entreno",desc:"2 panqueques (con chía en la mezcla) + 1 banana",prot:32,carbs:73,fat:9,training:true},
       {id:"post",time:"12:00",icon:"🥛🫐",name:"Post-Entreno + Yogur",desc:"Yogur griego (200g) + 1 scoop whey (25g) + arándanos",supplements:["Creatina 5g"],prot:35,carbs:15,fat:5,training:true},
       {id:"almuerzo",time:"13:00",icon:"🏠",name:"Almuerzo: Lo que haya + Arroz",desc:"Carne/pollo de la heladera o recalentado + 1 taza arroz. Si no hay proteína: sumá huevos",prot:40,carbs:50,fat:18,flexible:true},
-      {id:"merienda",time:"17:00",icon:"🥜🥞",name:"Merienda Facu",desc:"Shaker whey (25g) + 1 cda mantequilla de maní + panqueque con chía + banana",prot:46,carbs:56,fat:17},
+      {id:"merienda",time:"16:00",icon:"🍳",name:"Merienda pre-Facu",desc:"Opción 1: 4 huevos revueltos + queso + jamón + 1 tostada. Opción 2: Mugcake (whey + huevo + avena + cacao + miel) + banana.",prot:40,carbs:40,fat:22},
       {id:"cena",time:"21:00",icon:"🍳",name:"Cena Liviana",desc:"2-3 huevos revueltos, o atún de lata, o cottage. Lo que sea rápido y proteico.",prot:25,carbs:2,fat:12,zeroCarbos:true,flexible:true},
     ]
   },
@@ -283,7 +283,7 @@ const DEFAULT_SCENARIOS = [
 let scenarios;
 const CHEAT_INTERVAL = 4;
 
-const PLANS_REV = 3;
+const PLANS_REV = 4;
 const PLAN_PATCHES = {
   1: [
     {scn:'tarde', meal:'desayuno', desc:'2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano + 5g creatina'},
@@ -304,6 +304,9 @@ const PLAN_PATCHES = {
     {scn:'descanso', meal:'desayuno', desc:'2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano', supplements:['Creatina 5g']},
     {scn:'futbol', meal:'desayuno', desc:'2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano', supplements:['Creatina 5g']},
     {scn:'manana', meal:'post', desc:'Yogur griego (200g) + 1 scoop whey (25g) + arándanos', supplements:['Creatina 5g']},
+  ],
+  4: [
+    {scn:'manana', meal:'merienda', time:'16:00', icon:'🍳', name:'Merienda pre-Facu', desc:'Opción 1: 4 huevos revueltos + queso + jamón + 1 tostada. Opción 2: Mugcake (whey + huevo + avena + cacao + miel) + banana.', prot:40, carbs:40, fat:22},
   ],
 };
 
