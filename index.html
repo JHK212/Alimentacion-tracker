@@ -1414,7 +1414,7 @@ function openWeightModal(){
   const inpN='background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;font-size:22px;color:var(--tx);width:100%;box-sizing:border-box;outline:none;font-family:var(--fm);font-weight:800;text-align:center';
   let html=`<div style="font-size:18px;font-weight:800;margin-bottom:16px">Registrar peso</div>`;
   html+=`<div class="mb-12"><label style="${lab}">Fecha</label><input id="wt-date" type="date" value="${td()}" max="${td()}" style="${inp}"></div>`;
-  html+=`<div style="margin-bottom:18px"><label style="${lab}">Peso (kg)</label><input id="wt-kg" type="number" inputmode="decimal" step="0.1" value="${defaultKg}" style="${inpN}"></div>`;
+  html+=`<div style="margin-bottom:18px"><label style="${lab}">Peso (kg)</label><input id="wt-kg" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" value="${defaultKg}" style="${inpN}"></div>`;
   html+=`<button class="btn" style="margin-bottom:12px" onclick="saveWeight()">Guardar</button>`;
   html+=`<button class="btn-out" onclick="closeModal()">Cancelar</button>`;
   $('modal-content').innerHTML=html;
@@ -1423,7 +1423,8 @@ function openWeightModal(){
 
 function saveWeight(){
   const date=$('wt-date').value;
-  const kg=parseFloat($('wt-kg').value);
+  const kgStr=($('wt-kg').value||'').replace(',','.');
+  const kg=parseFloat(kgStr);
   if(!date||!kg||kg<30||kg>250){
     alert('Datos inválidos');
     return;
