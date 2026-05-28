@@ -94,6 +94,10 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
 .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:100;display:none;align-items:flex-end;justify-content:center;}
 .modal-overlay.show{display:flex;}
 .modal{background:var(--sf);border-radius:24px 24px 0 0;padding:28px 20px 40px;padding-bottom:calc(40px + env(safe-area-inset-bottom));width:100%;max-width:480px;}
+
+@keyframes celebrate-fade{from{opacity:0}to{opacity:1}}
+@keyframes confetti-fall{0%{transform:translateY(-20vh) rotate(0);opacity:1}100%{transform:translateY(120vh) rotate(720deg);opacity:0}}
+.confetti{position:fixed;top:0;width:10px;height:14px;border-radius:2px;animation:confetti-fall 2.5s ease-out forwards;z-index:1001;pointer-events:none;}
 </style>
 </head>
 <body>
@@ -101,7 +105,10 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
 <!-- ══ HOY ══ -->
 <div id="pg-today" class="page active">
   <div class="header">
-    <div class="logo">COMIDAS</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="logo">COMIDAS</div>
+      <div id="streak-badge" class="mono fw-800" style="font-size:14px;color:var(--ac);display:none"></div>
+    </div>
     <div class="text-xs text-mt" id="today-date"></div>
     <button class="icon-btn" onclick="navTo('pg-config')">⚙</button>
   </div>
@@ -472,9 +479,11 @@ function selectScenario(idx){
 }
 
 function checkMeal(mealId){
+  const wasComplete=isDayComplete(activeDate);
   const log=getDayLog(activeDate);
   log.meals[mealId]=true;
   save("food-log",mealLog);
+  if(!wasComplete&&isDayComplete(activeDate)&&activeDate===td()) celebrateDay();
   renderToday();
 }
 
@@ -535,6 +544,7 @@ function pickSide(sideId){
   const dish=window._customDish;
   const side=SIDES.find(s=>s.id===sideId);
   const mealId=window._customMealId;
+  const wasComplete=isDayComplete(activeDate);
   const log=getDayLog(activeDate);
   log.meals[mealId]={
     custom:true,
@@ -546,6 +556,7 @@ function pickSide(sideId){
   };
   save("food-log",mealLog);
   closeModal();
+  if(!wasComplete&&isDayComplete(activeDate)&&activeDate===td()) celebrateDay();
   renderToday();
 }
 
@@ -570,6 +581,7 @@ function changeScenario(){
 }
 
 function renderToday(){
+  updateStreak();
   const log=getDayLog(activeDate);
   const isToday=activeDate===td();
   $("today-date").textContent=isToday?fdLong(activeDate):'📅 '+fdLong(activeDate);
@@ -1049,6 +1061,81 @@ function deleteSelectedDays(){
   save("food-log",mealLog);
   selectedDelDays=new Set();
   renderDelDays();
+}
+
+// ── Streak & Celebrate ──
+function isDayComplete(dateStr){
+  const log=mealLog[dateStr];
+  if(!log||!log.scenario) return false;
+  const scn=scenarios.find(s=>s.id===log.scenario);
+  if(!scn) return false;
+  const req=scn.meals.filter(m=>!m.optional);
+  return req.length>0&&req.every(m=>isMealDone(log.meals[m.id]));
+}
+
+function calcStreak(){
+  const today=td();
+  let streak=0;
+  const cursor=new Date(today+"T12:00:00Z");
+  const todayStatus=getDayStatus(today);
+  const todayComplete=todayStatus==='complete'||todayStatus==='complete-cheat';
+  if(!todayComplete) cursor.setUTCDate(cursor.getUTCDate()-1);
+  while(true){
+    const ds=cursor.toISOString().slice(0,10);
+    const st=getDayStatus(ds);
+    if(st==='complete'||st==='complete-cheat'){
+      streak++;
+      cursor.setUTCDate(cursor.getUTCDate()-1);
+    } else break;
+  }
+  return streak;
+}
+
+function updateStreak(){
+  const badge=$("streak-badge");
+  if(!badge) return;
+  const streak=calcStreak();
+  if(streak>0){
+    badge.textContent=`🔥 ${streak}`;
+    badge.style.display='';
+  } else {
+    badge.style.display='none';
+  }
+}
+
+function spawnConfetti(){
+  const colors=['#e69500','#22c55e','#fbbf24','#3b82f6','#ec4899','#a78bfa'];
+  for(let i=0;i<22;i++){
+    const c=document.createElement('div');
+    c.className='confetti';
+    c.style.left=(Math.random()*100)+'%';
+    c.style.background=colors[Math.floor(Math.random()*colors.length)];
+    c.style.animationDelay=(Math.random()*0.4)+'s';
+    c.style.animationDuration=(1.8+Math.random()*1.2)+'s';
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(),3500);
+  }
+}
+
+function celebrateDay(){
+  try{ if(navigator.vibrate) navigator.vibrate([60,40,60,40,200]); }catch(e){}
+  spawnConfetti();
+  const streak=calcStreak();
+  let emoji='🎉', msg='¡Día completo!';
+  if(streak>=30){ emoji='👑'; msg='¡30 días seguidos!'; }
+  else if(streak>=14){ emoji='🚀'; msg='¡2 semanas seguidas!'; }
+  else if(streak>=7){ emoji='⭐'; msg='¡1 semana seguida!'; }
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(8,8,10,0.92);z-index:1000;display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:pointer;animation:celebrate-fade 0.3s ease-out;text-align:center;padding:20px';
+  overlay.onclick=()=>overlay.remove();
+  overlay.innerHTML=`
+    <div style="font-size:96px;margin-bottom:20px">${emoji}</div>
+    <div style="font-size:30px;font-weight:800;color:var(--tx);margin-bottom:18px">${msg}</div>
+    <div style="font-family:var(--fm);font-size:22px;color:var(--ac);font-weight:800">🔥 ${streak} ${streak===1?'día':'días'}</div>
+    <div class="text-xs text-mt" style="margin-top:24px">Tocá para cerrar</div>
+  `;
+  document.body.appendChild(overlay);
+  setTimeout(()=>{ if(overlay.parentNode) overlay.remove(); },3500);
 }
 
 // ── PWA ──
