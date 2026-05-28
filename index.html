@@ -1088,6 +1088,25 @@ function deleteSelectedDays(){
 }
 
 // ── Profile & Progress ──
+function getCreatineLoad(){
+  const data=load('food-creatine-load',null);
+  if(!data||!data.start) return null;
+  const today=td();
+  const cursor=new Date(data.start+"T12:00:00Z");
+  cursor.setUTCDate(cursor.getUTCDate()+6);
+  const endDate=cursor.toISOString().slice(0,10);
+  const startD=new Date(data.start+"T12:00:00Z");
+  const todayD=new Date(today+"T12:00:00Z");
+  const daysSince=Math.floor((todayD-startD)/86400000);
+  return {start:data.start, end:endDate, daysSince, daysTotal:7, active:(today>=data.start&&today<=endDate), completed:today>endDate};
+}
+
+function isLoadingDay(dateStr){
+  const cre=getCreatineLoad();
+  if(!cre) return false;
+  return dateStr>=cre.start&&dateStr<=cre.end;
+}
+
 function calcTDEE(){
   const profile=load('food-profile',null);
   if(!profile||!profile.altura||!profile.edad) return null;
@@ -1101,7 +1120,7 @@ function calcTDEE(){
 }
 
 function calcWeightTrend(){
-  const weights=[...load('food-weight',[])].sort((a,b)=>a.date.localeCompare(b.date));
+  const weights=[...load('food-weight',[])].filter(w=>!isLoadingDay(w.date)).sort((a,b)=>a.date.localeCompare(b.date));
   if(weights.length<2) return null;
   const today=td();
   const cursor=new Date(today+"T12:00:00Z");
@@ -1145,7 +1164,7 @@ function analyzeWindow(daysBack){
   const expectedKgLoss=deficit?(deficit*daysBack)/7700:null;
   let realKgLoss=null, adjustedTDEE=null;
   const weights=[...load('food-weight',[])].sort((a,b)=>a.date.localeCompare(b.date));
-  const winWeights=weights.filter(w=>dates.includes(w.date));
+  const winWeights=weights.filter(w=>dates.includes(w.date)&&!isLoadingDay(w.date));
   if(winWeights.length>=2){
     realKgLoss=winWeights[0].kg-winWeights[winWeights.length-1].kg;
     if(avgConsumed>0) adjustedTDEE=Math.round(avgConsumed+(realKgLoss*7700/daysBack));
@@ -1193,6 +1212,15 @@ function drawWeightChart(){
 }
 
 function renderStatusBanner(trend){
+  const cre=getCreatineLoad();
+  if(cre&&cre.active){
+    const dayN=cre.daysSince+1;
+    return `<div class="card" style="cursor:default;border-color:var(--ac);text-align:center;padding:24px 20px">
+      <div style="font-size:40px;margin-bottom:6px;line-height:1">🧪</div>
+      <div style="font-size:22px;font-weight:800;color:var(--ac);margin-bottom:8px">Carga creatina · día ${dayN}/7</div>
+      <div class="text-sm" style="color:#a0a0b0;line-height:1.5">Peso puede subir 1-2 kg (agua intramuscular). Tendencia pausada hasta terminar la carga.</div>
+    </div>`;
+  }
   let status, emoji, msg, color;
   if(trend===null){
     status='Sin datos suficientes'; emoji='ℹ'; color='var(--mt)';
@@ -1294,7 +1322,53 @@ function renderProgress(){
       </div>
     </div>`;
   }
+  // Suplementos card
+  const cre=getCreatineLoad();
+  html+=`<div class="card" style="cursor:default">
+    <div class="row">
+      <div style="flex:1">
+        <div class="text-xs text-mt fw-600">SUPLEMENTOS</div>
+        ${cre
+          ? (cre.active
+              ? `<div class="text-sm mt-4 text-ac fw-700">🧪 Carga creatina · día ${cre.daysSince+1}/7</div><div class="text-xs text-mt mt-4">Termina ${fd(cre.end)}</div>`
+              : `<div class="text-sm mt-4">✓ Carga completada</div><div class="text-xs text-mt mt-4">El ${fd(cre.end)}</div>`)
+          : `<div class="text-sm text-mt mt-4">Ninguno activo</div>`
+        }
+      </div>
+      <button class="icon-btn" onclick="openCreatineModal()">${cre?'✎':'＋'}</button>
+    </div>
+  </div>`;
   $('progress-content').innerHTML=html;
+}
+
+function openCreatineModal(){
+  const cre=load('food-creatine-load',null);
+  const lab='font-size:11px;color:var(--mt);font-weight:600;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px';
+  const inp='background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;font-size:16px;color:var(--tx);width:100%;box-sizing:border-box;outline:none';
+  let html=`<div style="font-size:18px;font-weight:800;margin-bottom:8px">Carga de creatina</div>`;
+  html+=`<div class="text-sm text-mt" style="margin-bottom:18px;line-height:1.5">7 días de carga (20g/día). Durante ese período el músculo retiene 1-2 kg de agua. La tendencia de peso se pausa.</div>`;
+  html+=`<div style="margin-bottom:18px"><label style="${lab}">Día 1 de la carga</label><input id="cre-date" type="date" value="${cre&&cre.start?cre.start:td()}" max="${td()}" style="${inp}"></div>`;
+  html+=`<button class="btn" style="margin-bottom:12px" onclick="saveCreatineStart()">${cre?'Actualizar':'Iniciar carga'}</button>`;
+  if(cre) html+=`<button class="btn-out" style="color:var(--dn);border-color:rgba(239,68,68,0.2);margin-bottom:12px" onclick="clearCreatine()">Borrar</button>`;
+  html+=`<button class="btn-out" onclick="closeModal()">Cancelar</button>`;
+  $('modal-content').innerHTML=html;
+  $('modal').classList.add('show');
+}
+
+function saveCreatineStart(){
+  const date=$('cre-date').value;
+  if(!date) return;
+  save('food-creatine-load',{start:date});
+  closeModal();
+  renderProgress();
+}
+
+function clearCreatine(){
+  if(confirm('¿Borrar registro de carga de creatina?')){
+    save('food-creatine-load',null);
+    closeModal();
+    renderProgress();
+  }
 }
 
 function openProfileModal(){
