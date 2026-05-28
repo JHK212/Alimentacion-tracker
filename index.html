@@ -95,6 +95,8 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
 .modal-overlay.show{display:flex;}
 .modal{background:var(--sf);border-radius:24px 24px 0 0;padding:28px 20px 40px;padding-bottom:calc(40px + env(safe-area-inset-bottom));width:100%;max-width:480px;}
 
+.supp-tag{display:flex;align-items:center;gap:8px;background:rgba(230,149,0,0.1);border-left:3px solid var(--ac);border-radius:0 8px 8px 0;padding:10px 14px;font-size:14px;font-weight:700;color:var(--ac);margin-top:8px;margin-bottom:10px;}
+
 @keyframes celebrate-fade{from{opacity:0}to{opacity:1}}
 @keyframes confetti-fall{0%{transform:translateY(-20vh) rotate(0);opacity:1}100%{transform:translateY(120vh) rotate(720deg);opacity:0}}
 .confetti{position:fixed;top:0;width:10px;height:14px;border-radius:2px;animation:confetti-fall 2.5s ease-out forwards;z-index:1001;pointer-events:none;}
@@ -243,7 +245,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
 const DEFAULT_SCENARIOS = [
   { id:"tarde", label:"🏋️ Entreno Tarde", short:"Tarde",
     meals:[
-      {id:"desayuno",time:"10:00",icon:"🥞🍳",name:"Desayuno Proteico",desc:"2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano + 5g creatina",prot:54,carbs:43,fat:27},
+      {id:"desayuno",time:"10:00",icon:"🥞🍳",name:"Desayuno Proteico",desc:"2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano",supplements:["Creatina 5g"],prot:54,carbs:43,fat:27},
       {id:"almuerzo",time:"13:30",icon:"🌯",name:"Burrito + Arroz",desc:"Carne o pollo + huevo + verdeo + morrón + 1 taza arroz",prot:45,carbs:80,fat:20,flexible:true},
       {id:"pre",time:"17:00",icon:"🍌",name:"Pre-Entreno",desc:"1 banana — energía rápida para el gym",prot:0,carbs:30,fat:0,training:true,optional:true},
       {id:"meripost",time:"19:30",icon:"🫐🥤",name:"Post-Entreno + Merienda",desc:"Yogur griego + chía + 1 scoop whey (25g) + arándanos + 1 panqueque",prot:51,carbs:38,fat:15,training:true},
@@ -253,7 +255,7 @@ const DEFAULT_SCENARIOS = [
   { id:"manana", label:"🌅 Entreno Mañana", short:"Mañana",
     meals:[
       {id:"pre",time:"08:30",icon:"🥞🍌",name:"Pre-Entreno",desc:"2 panqueques (con chía en la mezcla) + 1 banana",prot:32,carbs:73,fat:9,training:true},
-      {id:"post",time:"12:00",icon:"🥛🫐",name:"Post-Entreno + Yogur",desc:"Yogur griego (200g) + 1 scoop whey (25g) + arándanos + 5g creatina",prot:35,carbs:15,fat:5,training:true},
+      {id:"post",time:"12:00",icon:"🥛🫐",name:"Post-Entreno + Yogur",desc:"Yogur griego (200g) + 1 scoop whey (25g) + arándanos",supplements:["Creatina 5g"],prot:35,carbs:15,fat:5,training:true},
       {id:"almuerzo",time:"13:00",icon:"🏠",name:"Almuerzo: Lo que haya + Arroz",desc:"Carne/pollo de la heladera o recalentado + 1 taza arroz. Si no hay proteína: sumá huevos",prot:40,carbs:50,fat:18,flexible:true},
       {id:"merienda",time:"17:00",icon:"🥜🥞",name:"Merienda Facu",desc:"Shaker whey (25g) + 1 cda mantequilla de maní + panqueque con chía + banana",prot:46,carbs:56,fat:17},
       {id:"cena",time:"21:00",icon:"🍳",name:"Cena Liviana",desc:"2-3 huevos revueltos, o atún de lata, o cottage. Lo que sea rápido y proteico.",prot:25,carbs:2,fat:12,zeroCarbos:true,flexible:true},
@@ -261,7 +263,7 @@ const DEFAULT_SCENARIOS = [
   },
   { id:"descanso", label:"😴 Descanso", short:"Descanso",
     meals:[
-      {id:"desayuno",time:"10:00",icon:"🥞🍳",name:"Desayuno Proteico",desc:"2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano + 5g creatina",prot:54,carbs:43,fat:27},
+      {id:"desayuno",time:"10:00",icon:"🥞🍳",name:"Desayuno Proteico",desc:"2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano",supplements:["Creatina 5g"],prot:54,carbs:43,fat:27},
       {id:"almuerzo",time:"13:30",icon:"🌯",name:"Burrito + Medio Arroz",desc:"Carne o pollo + huevo + verduras + ½ taza arroz",prot:45,carbs:55,fat:20,flexible:true},
       {id:"merienda",time:"17:00",icon:"🫐🥞",name:"Merienda Proteica",desc:"Yogur griego + chía + 1 scoop whey (25g) + arándanos + 1 panqueque",prot:47,carbs:38,fat:15},
       {id:"cena",time:"20:00",icon:"🏠",name:"Cena: Lo que haya",desc:"Priorizá proteína. Evitá solo carbos. Si no hay: 2-3 huevos o atún de lata",prot:30,carbs:0,fat:15,zeroCarbos:true,flexible:true},
@@ -269,7 +271,7 @@ const DEFAULT_SCENARIOS = [
   },
   { id:"futbol", label:"⚽ Fútbol Noche", short:"Fútbol",
     meals:[
-      {id:"desayuno",time:"10:00",icon:"🥞🍳",name:"Desayuno Proteico",desc:"2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano + 5g creatina",prot:54,carbs:43,fat:27},
+      {id:"desayuno",time:"10:00",icon:"🥞🍳",name:"Desayuno Proteico",desc:"2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano",supplements:["Creatina 5g"],prot:54,carbs:43,fat:27},
       {id:"almuerzo",time:"13:30",icon:"🌯",name:"Burrito + Arroz",desc:"Carne o pollo + huevo + verduras + 1 taza arroz",prot:45,carbs:80,fat:20,flexible:true},
       {id:"merienda",time:"16:00",icon:"🫐🥞",name:"Merienda Proteica",desc:"Yogur griego + chía + 1 scoop whey (25g) + arándanos + 1 panqueque",prot:47,carbs:38,fat:15},
       {id:"pre",time:"18:30",icon:"🍌",name:"Pre-Fútbol",desc:"Banana + barrita de cereal o pasas",prot:3,carbs:50,fat:2,training:true},
@@ -281,7 +283,7 @@ const DEFAULT_SCENARIOS = [
 let scenarios;
 const CHEAT_INTERVAL = 4;
 
-const PLANS_REV = 2;
+const PLANS_REV = 3;
 const PLAN_PATCHES = {
   1: [
     {scn:'tarde', meal:'desayuno', desc:'2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano + 5g creatina'},
@@ -296,6 +298,12 @@ const PLAN_PATCHES = {
   2: [
     {scn:'tarde', meal:'pre', optional:true},
     {scn:'futbol', meal:'post', optional:true},
+  ],
+  3: [
+    {scn:'tarde', meal:'desayuno', desc:'2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano', supplements:['Creatina 5g']},
+    {scn:'descanso', meal:'desayuno', desc:'2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano', supplements:['Creatina 5g']},
+    {scn:'futbol', meal:'desayuno', desc:'2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano', supplements:['Creatina 5g']},
+    {scn:'manana', meal:'post', desc:'Yogur griego (200g) + 1 scoop whey (25g) + arándanos', supplements:['Creatina 5g']},
   ],
 };
 
@@ -644,6 +652,7 @@ function renderToday(){
       <div class="card" style="cursor:default;padding:24px;${border};${bg}">
         <div class="mono text-mt fw-700 mb-8" style="font-size:13px">${nextMeal.time}</div>
         <div style="font-size:24px;font-weight:800;margin-bottom:8px">${nextMeal.icon} ${nextMeal.name}${nextMeal.optional?' <span class="tag tag-opt" style="font-size:10px;vertical-align:middle">OPCIONAL</span>':''}</div>
+        ${nextMeal.supplements&&nextMeal.supplements.length?nextMeal.supplements.map(s=>`<div class="supp-tag">💊 ${s}</div>`).join(''):''}
         <div class="text-sm" style="color:#a0a0b0;line-height:1.6">${nextMeal.desc}</div>
         ${nextMeal.zeroCarbos?'<div class="zero-carb" style="margin-top:10px">🚫 CERO CARBOS</div>':''}
         <div class="flex gap-8 mt-12" style="flex-wrap:wrap">${mealTags(nextMeal)}</div>
@@ -744,6 +753,7 @@ function showPlan(idx, btnEl){
     html+=`<div class="card" style="cursor:default;${border};${bg}">
       <div class="row mb-4"><span class="text-xs fw-700 ${m.training?'text-ac':'text-mt'}">${m.time}</span><span class="text-xs text-mt mono">${mealKcal(m)} kcal</span></div>
       <div style="font-size:16px;font-weight:800;margin-bottom:4px">${m.icon} ${m.name}</div>
+      ${m.supplements&&m.supplements.length?m.supplements.map(s=>`<div class="supp-tag">💊 ${s}</div>`).join(''):''}
       <div class="text-sm text-mt" style="line-height:1.5">${m.desc}</div>
       <div class="flex gap-8 mt-8" style="flex-wrap:wrap">${mealTags(m)}</div>
       ${m.zeroCarbos?'<div class="zero-carb">🚫 CERO CARBOS</div>':''}
