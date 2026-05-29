@@ -87,6 +87,9 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
 .tag-f{background:rgba(167,139,250,0.1);color:#a78bfa;}
 .tag-opt{background:rgba(120,120,138,0.15);color:var(--mt);}
 .label{font-size:11px;color:var(--mt);font-weight:600;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;}
+.inp{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;font-size:16px;color:var(--tx);width:100%;box-sizing:border-box;outline:none;}
+.inp-num{font-family:var(--fm);font-weight:700;text-align:center;}
+.btn-out.danger{color:var(--dn);border-color:rgba(239,68,68,0.2);}
 
 /* Zero carb */
 .zero-carb{display:inline-flex;align-items:center;gap:5px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--dn);margin-top:6px;}
@@ -216,7 +219,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
     <button class="btn-out" onclick="navTo('pg-del')" style="margin-bottom:12px">Borrar días del historial</button>
   </div>
   <div class="sec" style="padding-top:0">
-    <button class="btn-out" style="color:var(--dn);border-color:rgba(239,68,68,0.2)" onclick="resetPlans()">Resetear planes originales</button>
+    <button class="btn-out danger" onclick="resetPlans()">Resetear planes originales</button>
   </div>
 </div>
 
@@ -230,7 +233,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="sec">
     <div class="text-sm text-mt mb-12">Tocá los días que querés eliminar</div>
     <div id="del-food-list"></div>
-    <button id="del-food-btn" class="btn-out mt-20" style="color:var(--dn);border-color:rgba(239,68,68,0.2);display:none" onclick="deleteSelectedDays()">Eliminar</button>
+    <button id="del-food-btn" class="btn-out mt-20 danger" style="display:none" onclick="deleteSelectedDays()">Eliminar</button>
     <button class="btn-out mt-12" onclick="selectAllDays()">Seleccionar todos</button>
   </div>
 </div>
@@ -521,15 +524,49 @@ function skipMeal(mealId){
 function openCustomMeal(mealId){
   window._customMealId=mealId;
   window._customDish=null;
-  renderCustomStep1();
+  const lastCustom=Object.keys(mealLog).sort().reverse().map(d=>(mealLog[d]&&mealLog[d].meals)?mealLog[d].meals[mealId]:null).find(v=>v&&v.custom&&v.dish);
+  window._lastCustom=lastCustom||null;
+  if(lastCustom&&DISHES.find(d=>d.id===lastCustom.dish)) renderCustomStep0(lastCustom);
+  else renderCustomStep1();
   $("modal").classList.add("show");
 }
 
+function renderCustomStep0(last){
+  const label=customMealLabel(last);
+  const kcal=last.prot*4+last.carbs*4+last.fat*9;
+  let html='<div style="font-size:18px;font-weight:800;margin-bottom:4px">¿Repetir lo de la última vez?</div>';
+  html+='<div class="text-sm text-mt mb-18">Tu último combo para esta comida</div>';
+  html+=`<div class="card" style="cursor:default;text-align:center;padding:20px;margin-bottom:14px">
+    <div class="fw-700" style="font-size:16px;margin-bottom:8px">${esc(label)}</div>
+    <div class="text-xs text-mt mono">${last.prot}p · ${last.carbs}c · ${last.fat}f · ${kcal} kcal</div>
+  </div>`;
+  html+='<button class="btn" style="margin-bottom:12px" onclick="confirmLastCombo()">✓ Repetir esto</button>';
+  html+='<button class="btn-out" style="margin-bottom:12px" onclick="renderCustomStep1()">🔄 Otro plato</button>';
+  html+='<button class="btn-out" onclick="closeModal()">Cancelar</button>';
+  $("modal-content").innerHTML=html;
+}
+
+function confirmLastCombo(){
+  const last=window._lastCustom;
+  if(!last) return;
+  const mealId=window._customMealId;
+  const wasComplete=isDayComplete(activeDate);
+  const log=getDayLog(activeDate);
+  log.meals[mealId]={...last};
+  save("food-log",mealLog);
+  closeModal();
+  if(!wasComplete&&isDayComplete(activeDate)&&activeDate===td()) celebrateDay();
+  renderToday();
+}
+
 function renderCustomStep1(){
+  const _usage={};
+  Object.values(mealLog).forEach(d=>Object.values(d.meals||{}).forEach(v=>{if(v&&v.custom&&v.dish)_usage[v.dish]=(_usage[v.dish]||0)+1;}));
+  const _sorted=[...DISHES].sort((a,b)=>(_usage[b.id]||0)-(_usage[a.id]||0));
   let html='<div style="font-size:18px;font-weight:800;margin-bottom:4px">¿Qué plato?</div>';
   html+='<div class="text-sm text-mt mb-18">Elegí una opción</div>';
   html+='<div style="max-height:60vh;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-right:4px">';
-  DISHES.forEach(d=>{
+  _sorted.forEach(d=>{
     html+=`<button onclick="pickDish('${d.id}')" style="background:var(--cd);border:1.5px solid var(--bd);border-radius:14px;padding:14px 8px;cursor:pointer;text-align:center;color:var(--tx)">
       <div style="font-size:24px;margin-bottom:4px">${d.emoji}</div>
       <div class="fw-700" style="font-size:12px;line-height:1.3">${d.name}</div>
@@ -727,10 +764,15 @@ function renderToday(){
   } else {
     // All marked
     const allDone=done===total;
+    const _tdee=calcTDEE();
+    const _consumed=dayKcal(activeDate);
+    const _def=_tdee?_tdee-_consumed:null;
+    const _defColor=_def!==null?(_def>=200?'var(--gn)':_def<0?'var(--dn)':'var(--yw)'):'var(--mt)';
     html+=`<div style="text-align:center;padding:40px 0">
       <div style="font-size:56px;margin-bottom:16px">${allDone?'🎉':'😐'}</div>
       <div style="font-size:22px;font-weight:800;color:${allDone?'var(--gn)':'var(--yw)'};margin-bottom:8px">${allDone?'Día completo':'Día parcial'}</div>
       <div class="text-sm text-mt">${allDone?'Todas las comidas cumplidas. Bien ahí.':`${done}/${total} comidas cumplidas.`}</div>
+      ${_tdee?`<div class="mono" style="font-size:13px;color:${_defColor};margin-top:10px">${_consumed} kcal · ${_def>=0?'-'+_def:'+'+Math.abs(_def)} kcal vs TDEE</div>`:''}
     </div>`;
     scn.meals.forEach(m=>{
       const v=log.meals[m.id];
@@ -742,6 +784,14 @@ function renderToday(){
         <span class="text-sm fw-600" style="color:${ok?'var(--gn)':'var(--dn)'};${ok?'':'text-decoration:line-through'}">${label}${m.optional?' <span class="text-xs text-mt" style="text-decoration:none">· opc.</span>':''}</span>
       </div>`;
     });
+  }
+
+  // Weight nudge (solo hoy)
+  if(isToday){
+    const _wts=load('food-weight',[]);
+    const _lastW=_wts.length?[..._wts].sort((a,b)=>b.date.localeCompare(a.date))[0]:null;
+    const _daysW=_lastW?Math.floor((new Date(td()+'T12:00:00Z')-new Date(_lastW.date+'T12:00:00Z'))/86400000):999;
+    if(_daysW>=7) html+='<div style="margin-top:16px;padding:12px 14px;border-radius:12px;border:1px solid var(--yw);background:rgba(234,179,8,0.08);display:flex;align-items:center;justify-content:space-between;gap:10px"><span class="text-xs" style="color:var(--mt)">'+(_daysW<999?'Hace '+_daysW+' días sin pesarte':'Registrá tu peso para activar el análisis')+'</span><button class="btn-out" onclick="navTo(\'pg-progress\')" style="font-size:12px;padding:6px 12px;white-space:nowrap;border-color:var(--yw);color:var(--yw)">Registrar</button></div>';
   }
 
   // Bottom actions
@@ -821,7 +871,7 @@ function editMeal(mi){
   html+=`<div class="flex gap-8 mb-12"><div class="flex-1"><label class="label">ENTRENO</label><select id="em-training" style="${inp}"><option value="0"${!m.training?' selected':''}>No</option><option value="1"${m.training?' selected':''}>Sí</option></select></div><div class="flex-1"><label class="label">CERO CARBOS</label><select id="em-zero" style="${inp}"><option value="0"${!m.zeroCarbos?' selected':''}>No</option><option value="1"${m.zeroCarbos?' selected':''}>Sí</option></select></div></div>`;
   html+=`<button class="btn mb-12" onclick="saveMealEdit()">Guardar</button>`;
   html+=`<button class="btn-out mb-12" onclick="editPlan(${editPlanIdx})">← Volver</button>`;
-  html+=`<button class="btn-out" style="color:var(--dn);border-color:rgba(239,68,68,0.2)" onclick="deleteMealFromPlan()">Eliminar comida</button>`;
+  html+=`<button class="btn-out danger" onclick="deleteMealFromPlan()">Eliminar comida</button>`;
   $("modal-content").innerHTML=html;
 }
 
@@ -945,13 +995,12 @@ function renderCheatCal(){
 
 function pickCheatDate(dateStr){
   window._cheatDate=dateStr;
-  const inp='background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;font-size:16px;color:var(--tx);width:100%;box-sizing:border-box;outline:none';
   let html='<div style="font-size:18px;font-weight:800;margin-bottom:4px">🍕 Registrar Cheat</div>';
   html+=`<div class="text-sm text-mt mb-18">${fdLong(dateStr)}</div>`;
   const _recent=cheatLog.filter(c=>c.kcal>0).slice(-5);
   const _def=_recent.length?Math.round(_recent.reduce((s,c)=>s+c.kcal,0)/_recent.length/50)*50:500;
-  html+=`<div class="mb-12"><label class="label">¿Qué comiste?</label><input id="cheat-input" style="${inp}" placeholder="Ej: Pizza, helado..."></div>`;
-  html+=`<div class="mb-18"><label class="label">Calorías aprox (opcional)</label><input id="cheat-kcal" type="number" style="${inp};font-family:var(--fm);font-weight:700;text-align:center" placeholder="500" value="${_def}"></div>`;
+  html+=`<div class="mb-12"><label class="label">¿Qué comiste?</label><input id="cheat-input" class="inp" placeholder="Ej: Pizza, helado..."></div>`;
+  html+=`<div class="mb-18"><label class="label">Calorías aprox (opcional)</label><input id="cheat-kcal" type="number" class="inp inp-num" placeholder="500" value="${_def}"></div>`;
   html+='<button class="btn mb-12" onclick="confirmCheat()">Registrar</button>';
   html+='<button class="btn-out" onclick="renderCheatCal()">📅 Elegir otra fecha</button>';
   $("modal-content").innerHTML=html;
@@ -1350,13 +1399,11 @@ function renderProgress(){
 
 function openCreatineModal(){
   const cre=load('food-creatine-load',null);
-  const lab='font-size:11px;color:var(--mt);font-weight:600;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px';
-  const inp='background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;font-size:16px;color:var(--tx);width:100%;box-sizing:border-box;outline:none';
   let html=`<div style="font-size:18px;font-weight:800;margin-bottom:8px">Carga de creatina</div>`;
   html+=`<div class="text-sm text-mt" style="margin-bottom:18px;line-height:1.5">7 días de carga (20g/día). Durante ese período el músculo retiene 1-2 kg de agua. La tendencia de peso se pausa.</div>`;
-  html+=`<div style="margin-bottom:18px"><label style="${lab}">Día 1 de la carga</label><input id="cre-date" type="date" value="${cre&&cre.start?cre.start:td()}" max="${td()}" style="${inp}"></div>`;
+  html+=`<div style="margin-bottom:18px"><label class="label">Día 1 de la carga</label><input id="cre-date" type="date" value="${cre&&cre.start?cre.start:td()}" max="${td()}" class="inp"></div>`;
   html+=`<button class="btn" style="margin-bottom:12px" onclick="saveCreatineStart()">${cre?'Actualizar':'Iniciar carga'}</button>`;
-  if(cre) html+=`<button class="btn-out" style="color:var(--dn);border-color:rgba(239,68,68,0.2);margin-bottom:12px" onclick="clearCreatine()">Borrar</button>`;
+  if(cre) html+=`<button class="btn-out danger" style="margin-bottom:12px" onclick="clearCreatine()">Borrar</button>`;
   html+=`<button class="btn-out" onclick="closeModal()">Cancelar</button>`;
   $('modal-content').innerHTML=html;
   $('modal').classList.add('show');
@@ -1380,14 +1427,11 @@ function clearCreatine(){
 
 function openProfileModal(){
   const profile=load('food-profile',{altura:'',edad:'',sexo:'M',factor:1.5});
-  const lab='font-size:11px;color:var(--mt);font-weight:600;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px';
-  const inp='background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;font-size:16px;color:var(--tx);width:100%;box-sizing:border-box;outline:none';
-  const inpN=inp+';font-family:var(--fm);font-weight:700;text-align:center';
   let html=`<div style="font-size:18px;font-weight:800;margin-bottom:16px">Tu perfil</div>`;
-  html+=`<div class="mb-12"><label style="${lab}">Altura (cm)</label><input id="prf-altura" type="number" inputmode="numeric" value="${profile.altura||''}" placeholder="182" style="${inpN}"></div>`;
-  html+=`<div class="mb-12"><label style="${lab}">Edad (años)</label><input id="prf-edad" type="number" inputmode="numeric" value="${profile.edad||''}" placeholder="25" style="${inpN}"></div>`;
-  html+=`<div class="mb-12"><label style="${lab}">Sexo</label><select id="prf-sexo" style="${inp}"><option value="M"${profile.sexo!=='F'?' selected':''}>Hombre</option><option value="F"${profile.sexo==='F'?' selected':''}>Mujer</option></select></div>`;
-  html+=`<div class="mb-18"><label style="${lab}">Nivel de actividad</label><select id="prf-factor" style="${inp}">
+  html+=`<div class="mb-12"><label class="label">Altura (cm)</label><input id="prf-altura" type="number" inputmode="numeric" value="${profile.altura||''}" placeholder="182" class="inp inp-num"></div>`;
+  html+=`<div class="mb-12"><label class="label">Edad (años)</label><input id="prf-edad" type="number" inputmode="numeric" value="${profile.edad||''}" placeholder="25" class="inp inp-num"></div>`;
+  html+=`<div class="mb-12"><label class="label">Sexo</label><select id="prf-sexo" class="inp"><option value="M"${profile.sexo!=='F'?' selected':''}>Hombre</option><option value="F"${profile.sexo==='F'?' selected':''}>Mujer</option></select></div>`;
+  html+=`<div class="mb-18"><label class="label">Nivel de actividad</label><select id="prf-factor" class="inp">
     <option value="1.5"${profile.factor==1.5?' selected':''}>Sedentario + entreno</option>
     <option value="1.6"${profile.factor==1.6?' selected':''}>Poco activo + entreno</option>
     <option value="1.7"${profile.factor==1.7?' selected':''}>Activo + entreno</option>
@@ -1416,12 +1460,9 @@ function openWeightModal(){
   const weights=load('food-weight',[]);
   const latest=weights.length?[...weights].sort((a,b)=>b.date.localeCompare(a.date))[0]:null;
   const defaultKg=latest?latest.kg:80;
-  const lab='font-size:11px;color:var(--mt);font-weight:600;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px';
-  const inp='background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;font-size:16px;color:var(--tx);width:100%;box-sizing:border-box;outline:none';
-  const inpN='background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:14px 16px;font-size:22px;color:var(--tx);width:100%;box-sizing:border-box;outline:none;font-family:var(--fm);font-weight:800;text-align:center';
   let html=`<div style="font-size:18px;font-weight:800;margin-bottom:16px">Registrar peso</div>`;
-  html+=`<div class="mb-12"><label style="${lab}">Fecha</label><input id="wt-date" type="date" value="${td()}" max="${td()}" style="${inp}"></div>`;
-  html+=`<div style="margin-bottom:18px"><label style="${lab}">Peso (kg)</label><input id="wt-kg" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" value="${defaultKg}" style="${inpN}"></div>`;
+  html+=`<div class="mb-12"><label class="label">Fecha</label><input id="wt-date" type="date" value="${td()}" max="${td()}" class="inp"></div>`;
+  html+=`<div style="margin-bottom:18px"><label class="label">Peso (kg)</label><input id="wt-kg" type="text" inputmode="decimal" pattern="[0-9]*[.,]?[0-9]*" value="${defaultKg}" class="inp inp-num" style="font-size:22px;font-weight:800"></div>`;
   html+=`<button class="btn" style="margin-bottom:12px" onclick="saveWeight()">Guardar</button>`;
   html+=`<button class="btn-out" onclick="closeModal()">Cancelar</button>`;
   $('modal-content').innerHTML=html;
