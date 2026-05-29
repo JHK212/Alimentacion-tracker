@@ -939,6 +939,8 @@ function renderCal(){
   const monthName=first.toLocaleDateString("es-AR",{month:"long",year:"numeric"});
   const todayDate=td();
   const headers=["Do","Lu","Ma","Mi","Ju","Vi","Sá"];
+  const weightDates=new Set((load('food-weight',[])).map(w=>w.date));
+  const photoDates=new Set(photoLog.map(p=>p.date));
 
   let html=`<div class="cal-nav"><button class="cal-nav-btn" onclick="calM--;if(calM<0){calM=11;calY--;}renderCal()">‹</button><span class="cal-month">${monthName}</span><button class="cal-nav-btn" onclick="calM++;if(calM>11){calM=0;calY++;}renderCal()">›</button></div>`;
   html+='<div class="cal-grid">';
@@ -953,9 +955,11 @@ function renderCal(){
     if(ds===todayDate) cls+=' today';
     if(status) cls+=' '+status;
     if(!future) cls+=' clickable';
-    const kcalLabel=kcal>0?`<div style="font-size:8px;font-family:var(--fm);opacity:0.7;margin-top:1px">${kcal}</div>`:'';
+    const kcalLabel=kcal>0?`<div style="font-size:8px;font-family:var(--fm);opacity:0.7;margin-top:1px;line-height:1">${kcal}</div>`:'';
+    const indicators=(weightDates.has(ds)?'⚖️':'')+(photoDates.has(ds)?'📷':'');
+    const indLabel=indicators?`<div style="font-size:9px;line-height:1;margin-top:1px">${indicators}</div>`:'';
     if(future) html+=`<div class="${cls}" style="opacity:0.3">${d}</div>`;
-    else html+=`<div class="${cls}" onclick="openDay('${ds}')">${d}${kcalLabel}</div>`;
+    else html+=`<div class="${cls}" onclick="openDay('${ds}')">${d}${kcalLabel}${indLabel}</div>`;
   }
   html+='</div>';
   $("food-calendar").innerHTML=html;
@@ -1338,30 +1342,62 @@ function saveCheckin(){
 }
 
 function renderPhotoCard(){
-  const latest=photoLog.length?[...photoLog].sort((a,b)=>b.date.localeCompare(a.date))[0]:null;
+  const sorted=[...photoLog].sort((a,b)=>b.date.localeCompare(a.date));
+  const latest=sorted[0]||null;
   const daysAgo=latest?Math.floor((new Date(td()+'T12:00:00Z')-new Date(latest.date+'T12:00:00Z'))/86400000):null;
-  const todayDone=latest&&latest.date===td();
   let html='<div class="card" style="cursor:default">';
   html+='<div class="row">';
   html+='<div style="flex:1">';
   html+='<div class="text-xs text-mt fw-600">FOTO PROGRESO</div>';
   if(latest){
     const color=daysAgo>14?'var(--yw)':'var(--mt)';
-    html+=`<div class="text-sm mt-4" style="color:${color}">${todayDone?'✓ Hoy':'Hace '+daysAgo+' día'+(daysAgo===1?'':'s')}</div>`;
+    html+=`<div class="text-sm mt-4" style="color:${color}">${daysAgo===0?'✓ Hoy':'Hace '+daysAgo+' día'+(daysAgo===1?'':'s')}</div>`;
     html+=`<div class="text-xs text-mt mt-4">Última: ${fd(latest.date)}</div>`;
   } else {
     html+='<div class="text-sm text-mt mt-4">Sin fotos registradas</div>';
     html+='<div class="text-xs text-mt mt-4">Solo marca fecha. Las fotos las guardás en tu galería.</div>';
   }
   html+='</div>';
-  html+=`<button class="btn-out" style="font-size:13px;padding:8px 14px;white-space:nowrap" onclick="markPhotoTaken()">${todayDone?'Tomé otra':'✓ Tomé foto'}</button>`;
-  html+='</div></div>';
+  html+=`<button class="btn-out" style="font-size:13px;padding:8px 14px;white-space:nowrap" onclick="openPhotoModal()">+ Marcar</button>`;
+  html+='</div>';
+  if(sorted.length>0){
+    html+='<div class="text-xs text-mt fw-600 mt-12" style="text-transform:uppercase;letter-spacing:1px">Historial</div>';
+    sorted.slice(0,8).forEach(p=>{
+      html+=`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)22">
+        <span style="font-size:14px">📷</span>
+        <span class="text-sm" style="flex:1">${fd(p.date)}</span>
+        <button class="icon-btn" style="width:28px;height:28px;font-size:11px;color:var(--dn)" onclick="deletePhoto('${p.date}')">✕</button>
+      </div>`;
+    });
+    if(sorted.length>8) html+=`<div class="text-xs text-mt mt-8" style="text-align:center">+ ${sorted.length-8} más</div>`;
+  }
+  html+='</div>';
   return html;
 }
 
-function markPhotoTaken(){
-  const date=td();
+function openPhotoModal(){
+  let html='<div style="font-size:18px;font-weight:800;margin-bottom:6px">Marcar foto</div>';
+  html+='<div class="text-sm text-mt" style="margin-bottom:18px;line-height:1.4">Solo guarda la fecha. La imagen vive en tu galería del celular.</div>';
+  html+='<div style="margin-bottom:18px"><label class="label">Fecha</label><input id="ph-date" type="date" value="'+td()+'" max="'+td()+'" class="inp"></div>';
+  html+='<button class="btn" style="margin-bottom:12px" onclick="savePhoto()">Guardar</button>';
+  html+='<button class="btn-out" onclick="closeModal()">Cancelar</button>';
+  $('modal-content').innerHTML=html;
+  $('modal').classList.add('show');
+}
+
+function savePhoto(){
+  const date=$('ph-date').value;
+  if(!date) return;
   if(!photoLog.find(p=>p.date===date)) photoLog.push({date});
+  save('food-photo',photoLog);
+  closeModal();
+  renderProgress();
+}
+
+function deletePhoto(date){
+  const idx=photoLog.findIndex(p=>p.date===date);
+  if(idx<0) return;
+  photoLog.splice(idx,1);
   save('food-photo',photoLog);
   renderProgress();
 }
