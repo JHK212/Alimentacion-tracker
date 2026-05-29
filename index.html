@@ -1149,12 +1149,12 @@ function getCreatineLoad(){
   if(!data||!data.start) return null;
   const today=td();
   const cursor=new Date(data.start+"T12:00:00Z");
-  cursor.setUTCDate(cursor.getUTCDate()+6);
+  cursor.setUTCDate(cursor.getUTCDate()+4);
   const endDate=cursor.toISOString().slice(0,10);
   const startD=new Date(data.start+"T12:00:00Z");
   const todayD=new Date(today+"T12:00:00Z");
   const daysSince=Math.floor((todayD-startD)/86400000);
-  return {start:data.start, end:endDate, daysSince, daysTotal:7, active:(today>=data.start&&today<=endDate), completed:today>endDate};
+  return {start:data.start, end:endDate, daysSince, daysTotal:5, active:(today>=data.start&&today<=endDate), completed:today>endDate};
 }
 
 function isLoadingDay(dateStr){
@@ -1273,7 +1273,7 @@ function renderStatusBanner(trend){
     const dayN=cre.daysSince+1;
     return `<div class="card" style="cursor:default;border-color:var(--ac);text-align:center;padding:24px 20px">
       <div style="font-size:40px;margin-bottom:6px;line-height:1">🧪</div>
-      <div style="font-size:22px;font-weight:800;color:var(--ac);margin-bottom:8px">Carga creatina · día ${dayN}/7</div>
+      <div style="font-size:22px;font-weight:800;color:var(--ac);margin-bottom:8px">Carga creatina · día ${dayN}/5</div>
       <div class="text-sm" style="color:#a0a0b0;line-height:1.5">Peso puede subir 1-2 kg (agua intramuscular). Tendencia pausada hasta terminar la carga.</div>
     </div>`;
   }
@@ -1386,7 +1386,7 @@ function renderProgress(){
         <div class="text-xs text-mt fw-600">SUPLEMENTOS</div>
         ${cre
           ? (cre.active
-              ? `<div class="text-sm mt-4 text-ac fw-700">🧪 Carga creatina · día ${cre.daysSince+1}/7</div><div class="text-xs text-mt mt-4">Termina ${fd(cre.end)}</div>`
+              ? `<div class="text-sm mt-4 text-ac fw-700">🧪 Carga creatina · día ${cre.daysSince+1}/5</div><div class="text-xs text-mt mt-4">Termina ${fd(cre.end)}</div>`
               : `<div class="text-sm mt-4">✓ Carga completada</div><div class="text-xs text-mt mt-4">El ${fd(cre.end)}</div>`)
           : `<div class="text-sm text-mt mt-4">Ninguno activo</div>`
         }
@@ -1400,7 +1400,7 @@ function renderProgress(){
 function openCreatineModal(){
   const cre=load('food-creatine-load',null);
   let html=`<div style="font-size:18px;font-weight:800;margin-bottom:8px">Carga de creatina</div>`;
-  html+=`<div class="text-sm text-mt" style="margin-bottom:18px;line-height:1.5">7 días de carga (20g/día). Durante ese período el músculo retiene 1-2 kg de agua. La tendencia de peso se pausa.</div>`;
+  html+=`<div class="text-sm text-mt" style="margin-bottom:18px;line-height:1.5">5 días de carga (20g/día). Durante ese período el músculo retiene 1-2 kg de agua. La tendencia de peso se pausa.</div>`;
   html+=`<div style="margin-bottom:18px"><label class="label">Día 1 de la carga</label><input id="cre-date" type="date" value="${cre&&cre.start?cre.start:td()}" max="${td()}" class="inp"></div>`;
   html+=`<button class="btn" style="margin-bottom:12px" onclick="saveCreatineStart()">${cre?'Actualizar':'Iniciar carga'}</button>`;
   if(cre) html+=`<button class="btn-out danger" style="margin-bottom:12px" onclick="clearCreatine()">Borrar</button>`;
