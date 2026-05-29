@@ -174,6 +174,8 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
       </div>
     </div>
 
+    <div id="cheat-histogram"></div>
+
     <div class="card" style="cursor:default">
       <div class="text-xs text-mt fw-600 mb-12">GUÍA</div>
       <div class="text-sm" style="color:#a0a0b0;line-height:1.7">
@@ -398,22 +400,23 @@ function mealTags(m){
 }
 
 function dayKcal(dateStr){
-  const log=mealLog[dateStr];
-  if(!log||!log.scenario) return 0;
-  const scn=scenarios.find(s=>s.id===log.scenario);
-  if(!scn) return 0;
   let kcal=0;
-  scn.meals.forEach(m=>{const v=log.meals[m.id];if(isMealDone(v)) kcal+=mealKcal(v&&v.custom?v:m);});
-  const cheats=cheatLog.filter(c=>c.date===dateStr);
-  cheats.forEach(c=>{kcal+=(c.kcal||0);});
+  const log=mealLog[dateStr];
+  if(log&&log.scenario){
+    const scn=scenarios.find(s=>s.id===log.scenario);
+    if(scn) scn.meals.forEach(m=>{const v=log.meals[m.id];if(isMealDone(v)) kcal+=mealKcal(v&&v.custom?v:m);});
+  }
+  cheatLog.filter(c=>c.date===dateStr).forEach(c=>{kcal+=(c.kcal||0);});
+  (snackLog||[]).filter(s=>s.date===dateStr).forEach(s=>{kcal+=(s.kcal||0);});
   return kcal;
 }
 
 // ── State ──
-let mealLog, cheatLog, calY, calM, activeDate, selectedDelDays=new Set();
+let mealLog, cheatLog, snackLog, checkinLog, photoLog, calY, calM, activeDate, selectedDelDays=new Set();
 function load(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 function td(){const d=new Date(Date.now()-3*3600*1000);return d.toISOString().slice(0,10);}
+function isoWeekStart(dStr){const d=new Date(dStr+"T12:00:00Z");const dow=d.getUTCDay();const diff=dow===0?-6:(1-dow);d.setUTCDate(d.getUTCDate()+diff);return d.toISOString().slice(0,10);}
 function fd(d){try{return new Date(d+"T12:00:00").toLocaleDateString("es-AR",{day:"numeric",month:"short"});}catch{return d;}}
 function fdLong(d){try{return new Date(d+"T12:00:00").toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long"});}catch{return d;}}
 function $(id){return document.getElementById(id);}
@@ -424,6 +427,9 @@ function init(){
   applyPlansMigration();
   mealLog=load("food-log",{});
   cheatLog=load("food-cheat",[]);
+  snackLog=load("food-snacks",[]);
+  checkinLog=load("food-checkin",[]);
+  photoLog=load("food-photo",[]);
   activeDate=td();
   const n=new Date();calY=n.getFullYear();calM=n.getMonth();
   renderToday();
@@ -786,6 +792,21 @@ function renderToday(){
     });
   }
 
+  // Snacks de este día
+  const _todaySnacks=snackLog.filter(s=>s.date===activeDate);
+  if(_todaySnacks.length>0){
+    html+='<div class="text-xs text-mt fw-600 mb-8 mt-20" style="text-transform:uppercase;letter-spacing:1.5px">Snacks extras</div>';
+    _todaySnacks.forEach(s=>{
+      const _gi=snackLog.indexOf(s);
+      html+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)22">
+        <span style="font-size:16px">🍎</span>
+        <span class="text-sm fw-600" style="flex:1">${esc(s.note)}</span>
+        <span class="mono text-xs text-mt">${s.kcal} kcal</span>
+        <button class="icon-btn" style="width:28px;height:28px;font-size:11px;color:var(--dn)" onclick="deleteSnack(${_gi})">✕</button>
+      </div>`;
+    });
+  }
+
   // Weight nudge (solo hoy)
   if(isToday){
     const _wts=load('food-weight',[]);
@@ -799,6 +820,7 @@ function renderToday(){
     ${actedAny>0?`<button class="btn-out" onclick="uncheckLast()" style="font-size:13px">↩ Deshacer</button>`:''}
     <button class="btn-out" onclick="changeScenario()" style="font-size:13px">Cambiar día</button>
   </div>`;
+  html+=`<button class="btn-out mt-12" onclick="openSnackModal()" style="font-size:13px">🍎 + Snack extra (no plan, no cheat)</button>`;
   if(!isToday){
     html+=`<button class="btn mt-12" onclick="navTo('pg-today')">← Volver a hoy</button>`;
   }
@@ -1036,6 +1058,9 @@ function renderCheat(){
   $("cheat-fill").style.background=color;
   $("cheat-next").textContent=days>=CHEAT_INTERVAL?'✓ Disponible':`En ${CHEAT_INTERVAL-days} días`;
 
+  // Histogram
+  $("cheat-histogram").innerHTML=drawCheatHistogram();
+
   // History
   const sorted=[...cheatLog].sort((a,b)=>b.date.localeCompare(a.date));
   $("cheat-history").innerHTML=sorted.length?sorted.map((c,i)=>
@@ -1045,7 +1070,20 @@ function renderCheat(){
 
 // ── Export / Import ──
 function exportFood(){
-  const data={version:2,exportDate:td(),plans:scenarios,mealLog:mealLog,cheatLog:cheatLog};
+  const data={
+    version:3,
+    exportDate:td(),
+    plans:scenarios,
+    plansRev:load('food-plans-rev',0),
+    mealLog,
+    cheatLog,
+    snackLog,
+    checkinLog,
+    photoLog,
+    weights:load('food-weight',[]),
+    profile:load('food-profile',null),
+    creatineLoad:load('food-creatine-load',null),
+  };
   const json=JSON.stringify(data,null,2);
   const blob=new Blob([json],{type:'application/json'});
   const url=URL.createObjectURL(blob);
@@ -1086,13 +1124,25 @@ function doImportFood(mode){
   if(!data) return;
   if(mode==='merge'){
     if(data.mealLog){Object.keys(data.mealLog).forEach(k=>{if(!mealLog[k]) mealLog[k]=data.mealLog[k];});}
-    if(data.cheatLog){const existing=new Set(cheatLog.map(c=>c.date+c.note));data.cheatLog.forEach(c=>{if(!existing.has(c.date+c.note)) cheatLog.push(c);});}
+    if(data.cheatLog){const ex=new Set(cheatLog.map(c=>c.date+c.note));data.cheatLog.forEach(c=>{if(!ex.has(c.date+c.note)) cheatLog.push(c);});}
+    if(data.snackLog){const ex=new Set(snackLog.map(s=>s.date+s.note));data.snackLog.forEach(s=>{if(!ex.has(s.date+s.note)) snackLog.push(s);});}
+    if(data.checkinLog){const ex=new Set(checkinLog.map(c=>c.date));data.checkinLog.forEach(c=>{if(!ex.has(c.date)) checkinLog.push(c);});}
+    if(data.photoLog){const ex=new Set(photoLog.map(p=>p.date));data.photoLog.forEach(p=>{if(!ex.has(p.date)) photoLog.push(p);});}
+    if(data.weights){const existing=load('food-weight',[]);const ex=new Set(existing.map(w=>w.date));data.weights.forEach(w=>{if(!ex.has(w.date)) existing.push(w);});save('food-weight',existing);}
   } else {
     if(data.mealLog) mealLog=data.mealLog;
     if(data.cheatLog) cheatLog=data.cheatLog;
+    if(data.snackLog) snackLog=data.snackLog;
+    if(data.checkinLog) checkinLog=data.checkinLog;
+    if(data.photoLog) photoLog=data.photoLog;
     if(data.plans){scenarios=data.plans;savePlans();}
+    if(data.plansRev!=null) save('food-plans-rev',data.plansRev);
+    if(data.weights) save('food-weight',data.weights);
+    if(data.profile) save('food-profile',data.profile);
+    if(data.creatineLoad) save('food-creatine-load',data.creatineLoad);
   }
   save("food-log",mealLog);save("food-cheat",cheatLog);
+  save("food-snacks",snackLog);save("food-checkin",checkinLog);save("food-photo",photoLog);
   window._importFoodData=null;closeModal();
   alert("Datos importados");navTo('pg-today');
 }
@@ -1141,6 +1191,214 @@ function deleteSelectedDays(){
   save("food-log",mealLog);
   selectedDelDays=new Set();
   renderDelDays();
+}
+
+// ── Snacks, Check-in, Photo, Adherence ──
+function openSnackModal(){
+  let html='<div style="font-size:18px;font-weight:800;margin-bottom:6px">🍎 Snack extra</div>';
+  html+='<div class="text-sm text-mt" style="margin-bottom:18px;line-height:1.4">Algo extra que no es del plan ni un cheat. Suma al consumo del día pero no cuenta como cheat.</div>';
+  html+='<div class="mb-12"><label class="label">¿Qué?</label><input id="sn-input" class="inp" placeholder="Ej: banana, café con leche..."></div>';
+  html+='<div style="margin-bottom:18px"><label class="label">Calorías aprox</label><input id="sn-kcal" type="number" class="inp inp-num" placeholder="150" value="150"></div>';
+  html+='<button class="btn" style="margin-bottom:12px" onclick="saveSnack()">Registrar</button>';
+  html+='<button class="btn-out" onclick="closeModal()">Cancelar</button>';
+  $('modal-content').innerHTML=html;
+  $('modal').classList.add('show');
+  setTimeout(()=>{const i=$('sn-input');if(i)i.focus();},300);
+}
+
+function saveSnack(){
+  const note=($('sn-input').value||'Snack').trim();
+  const kcal=parseInt($('sn-kcal').value)||0;
+  if(kcal<=0){alert('Indicá calorías aproximadas');return;}
+  snackLog.push({date:activeDate,note,kcal});
+  save('food-snacks',snackLog);
+  closeModal();
+  renderToday();
+}
+
+function deleteSnack(idx){
+  snackLog.splice(idx,1);
+  save('food-snacks',snackLog);
+  renderToday();
+}
+
+function renderAdherenceCard(){
+  const today=td();
+  const dates=[];
+  const cursor=new Date(today+"T12:00:00Z");
+  for(let i=0;i<28;i++){
+    dates.push(cursor.toISOString().slice(0,10));
+    cursor.setUTCDate(cursor.getUTCDate()-1);
+  }
+  const stats={};
+  scenarios.forEach(scn=>{stats[scn.id]={label:scn.label,used:0,complete:0};});
+  dates.forEach(d=>{
+    const log=mealLog[d];
+    if(!log||!log.scenario||!stats[log.scenario]) return;
+    const scn=scenarios.find(s=>s.id===log.scenario);
+    if(!scn) return;
+    stats[log.scenario].used++;
+    const req=scn.meals.filter(m=>!m.optional);
+    if(req.length>0&&req.every(m=>isMealDone(log.meals[m.id]))) stats[log.scenario].complete++;
+  });
+  const used=Object.values(stats).filter(s=>s.used>0);
+  if(used.length===0) return '';
+  let html='<div class="card" style="cursor:default">';
+  html+='<div class="text-xs text-mt fw-600 mb-12">ADHERENCIA POR PLAN · 4 SEMANAS</div>';
+  used.forEach(s=>{
+    const pct=Math.round((s.complete/s.used)*100);
+    const color=pct>=80?'var(--gn)':pct>=50?'var(--yw)':'var(--dn)';
+    html+=`<div style="margin-bottom:10px">
+      <div class="row mb-4">
+        <span class="text-sm">${esc(s.label)}</span>
+        <span class="mono fw-700 text-xs" style="color:${color}">${s.complete}/${s.used} · ${pct}%</span>
+      </div>
+      <div style="height:6px;background:var(--bd);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${color};border-radius:3px"></div>
+      </div>
+    </div>`;
+  });
+  html+='</div>';
+  return html;
+}
+
+function renderCheckinCard(){
+  const weekStart=isoWeekStart(td());
+  const thisWeek=checkinLog.find(c=>c.date>=weekStart);
+  let html='<div class="card" style="cursor:default">';
+  html+='<div class="text-xs text-mt fw-600 mb-8">CHECK-IN SEMANAL</div>';
+  if(thisWeek){
+    const SYM={'+':'↑','=':'=','-':'↓'};
+    const negs=['fuerza','energia','hambre','sueno','humor'].filter(k=>thisWeek[k]==='-').length;
+    const txt=negs>=3?'⚠ 3+ señales negativas. Revisá kcal.':negs>=1?`${negs} señal${negs>1?'es':''} negativa${negs>1?'s':''}`:'✓ Todo OK';
+    const color=negs>=3?'var(--dn)':negs>=1?'var(--yw)':'var(--gn)';
+    html+=`<div class="text-sm mt-4" style="color:${color}">${txt}</div>`;
+    html+=`<div class="text-xs text-mt mt-8 mono">Fuerza ${SYM[thisWeek.fuerza]} · Energía ${SYM[thisWeek.energia]} · Hambre ${SYM[thisWeek.hambre]} · Sueño ${SYM[thisWeek.sueno]} · Humor ${SYM[thisWeek.humor]}</div>`;
+    html+='<button class="btn-out mt-12" style="font-size:13px" onclick="openCheckinModal()">Actualizar</button>';
+  } else {
+    html+='<div class="text-sm text-mt mt-4">Sin check-in esta semana</div>';
+    html+='<div class="text-xs text-mt mt-4">Detecta señales que el peso no captura (fuerza, energía, sueño)</div>';
+    html+='<button class="btn mt-12" onclick="openCheckinModal()">Hacer check-in</button>';
+  }
+  html+='</div>';
+  return html;
+}
+
+function openCheckinModal(){
+  const weekStart=isoWeekStart(td());
+  const existing=checkinLog.find(c=>c.date>=weekStart);
+  window._checkin=existing?{...existing}:{date:td(),fuerza:'',energia:'',hambre:'',sueno:'',humor:''};
+  renderCheckinModal();
+  $('modal').classList.add('show');
+}
+
+function renderCheckinModal(){
+  const c=window._checkin;
+  const QS=[
+    {key:'fuerza',label:'Fuerza en gym',opts:[['+','📈','subió'],['=','💪','igual'],['-','📉','bajó']]},
+    {key:'energia',label:'Energía',opts:[['+','😊','bien'],['=','😐','regular'],['-','😴','baja']]},
+    {key:'hambre',label:'Hambre',opts:[['+','🍽️','control'],['=','🍴','fuerte'],['-','🤤','mucha']]},
+    {key:'sueno',label:'Sueño',opts:[['+','😴','bien'],['=','😪','regular'],['-','🥱','mal']]},
+    {key:'humor',label:'Humor',opts:[['+','😀','bien'],['=','😐','regular'],['-','😞','mal']]},
+  ];
+  let html='<div style="font-size:18px;font-weight:800;margin-bottom:6px">Check-in semanal</div>';
+  html+='<div class="text-sm text-mt" style="margin-bottom:18px">¿Cómo viene la semana?</div>';
+  QS.forEach(q=>{
+    html+=`<div style="margin-bottom:14px"><div class="text-xs fw-600" style="color:var(--tx);margin-bottom:6px">${q.label}</div><div class="flex gap-8">`;
+    q.opts.forEach(o=>{
+      const sel=c[q.key]===o[0];
+      html+=`<button onclick="setCheckin('${q.key}','${o[0]}')" style="flex:1;background:${sel?'rgba(230,149,0,0.12)':'var(--cd)'};border:1.5px solid ${sel?'var(--ac)':'var(--bd)'};border-radius:12px;padding:10px 4px;cursor:pointer;color:var(--tx)">
+        <div style="font-size:22px;line-height:1">${o[1]}</div>
+        <div class="text-xs" style="margin-top:4px;color:${sel?'var(--ac)':'var(--mt)'}">${o[2]}</div>
+      </button>`;
+    });
+    html+='</div></div>';
+  });
+  const allFilled=QS.every(q=>c[q.key]);
+  html+=`<button class="btn" style="margin-bottom:12px;${allFilled?'':'opacity:0.4;pointer-events:none'}" onclick="saveCheckin()">${allFilled?'Guardar':'Completá los 5'}</button>`;
+  html+='<button class="btn-out" onclick="closeModal()">Cancelar</button>';
+  $('modal-content').innerHTML=html;
+}
+
+function setCheckin(key,val){
+  window._checkin[key]=val;
+  renderCheckinModal();
+}
+
+function saveCheckin(){
+  const c=window._checkin;
+  if(!c.fuerza||!c.energia||!c.hambre||!c.sueno||!c.humor) return;
+  const weekStart=isoWeekStart(td());
+  const idx=checkinLog.findIndex(x=>x.date>=weekStart);
+  if(idx>=0) checkinLog[idx]=c;
+  else checkinLog.push(c);
+  save('food-checkin',checkinLog);
+  closeModal();
+  renderProgress();
+}
+
+function renderPhotoCard(){
+  const latest=photoLog.length?[...photoLog].sort((a,b)=>b.date.localeCompare(a.date))[0]:null;
+  const daysAgo=latest?Math.floor((new Date(td()+'T12:00:00Z')-new Date(latest.date+'T12:00:00Z'))/86400000):null;
+  const todayDone=latest&&latest.date===td();
+  let html='<div class="card" style="cursor:default">';
+  html+='<div class="row">';
+  html+='<div style="flex:1">';
+  html+='<div class="text-xs text-mt fw-600">FOTO PROGRESO</div>';
+  if(latest){
+    const color=daysAgo>14?'var(--yw)':'var(--mt)';
+    html+=`<div class="text-sm mt-4" style="color:${color}">${todayDone?'✓ Hoy':'Hace '+daysAgo+' día'+(daysAgo===1?'':'s')}</div>`;
+    html+=`<div class="text-xs text-mt mt-4">Última: ${fd(latest.date)}</div>`;
+  } else {
+    html+='<div class="text-sm text-mt mt-4">Sin fotos registradas</div>';
+    html+='<div class="text-xs text-mt mt-4">Solo marca fecha. Las fotos las guardás en tu galería.</div>';
+  }
+  html+='</div>';
+  html+=`<button class="btn-out" style="font-size:13px;padding:8px 14px;white-space:nowrap" onclick="markPhotoTaken()">${todayDone?'Tomé otra':'✓ Tomé foto'}</button>`;
+  html+='</div></div>';
+  return html;
+}
+
+function markPhotoTaken(){
+  const date=td();
+  if(!photoLog.find(p=>p.date===date)) photoLog.push({date});
+  save('food-photo',photoLog);
+  renderProgress();
+}
+
+function drawCheatHistogram(){
+  if(cheatLog.length===0) return '';
+  const today=td();
+  const wkCursor=new Date(today+"T12:00:00Z");
+  const dow=wkCursor.getUTCDay();
+  wkCursor.setUTCDate(wkCursor.getUTCDate()-(dow===0?6:dow-1));
+  const weekList=[];
+  for(let i=0;i<8;i++){
+    const ws=wkCursor.toISOString().slice(0,10);
+    const weCursor=new Date(ws+"T12:00:00Z");
+    weCursor.setUTCDate(weCursor.getUTCDate()+6);
+    const we=weCursor.toISOString().slice(0,10);
+    const wkCheats=cheatLog.filter(c=>c.date>=ws&&c.date<=we);
+    weekList.unshift({week:ws,count:wkCheats.length,kcal:wkCheats.reduce((s,c)=>s+(c.kcal||0),0)});
+    wkCursor.setUTCDate(wkCursor.getUTCDate()-7);
+  }
+  if(weekList.every(w=>w.count===0)) return '';
+  const W=320, H=80;
+  const barW=W/weekList.length;
+  const maxCount=Math.max(1,...weekList.map(w=>w.count));
+  let bars='';
+  weekList.forEach((w,i)=>{
+    const h=(w.count/maxCount)*(H-22);
+    const x=i*barW+4;
+    const y=H-h-14;
+    bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(barW-8).toFixed(1)}" height="${Math.max(h,1).toFixed(1)}" rx="2" fill="var(--ac)" opacity="${w.count>0?0.9:0.15}"/>`;
+    if(w.count>0) bars+=`<text x="${(x+(barW-8)/2).toFixed(1)}" y="${(y-3).toFixed(1)}" text-anchor="middle" font-size="10" font-family="JetBrains Mono" font-weight="700" fill="var(--ac)">${w.count}</text>`;
+  });
+  return `<div class="card" style="cursor:default">
+    <div class="text-xs text-mt fw-600 mb-8">CHEATS POR SEMANA · 8 SEM</div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" height="80" style="display:block">${bars}</svg>
+    <div class="text-xs text-mt mt-4" style="text-align:center">← más antiguo · más reciente →</div>
+  </div>`;
 }
 
 // ── Profile & Progress ──
@@ -1212,9 +1470,12 @@ function analyzeWindow(daysBack){
   });
   const cheats=cheatLog.filter(c=>dates.includes(c.date));
   const cheatKcal=cheats.reduce((s,c)=>s+(c.kcal||0),0);
+  const snacks=snackLog.filter(s=>dates.includes(s.date));
+  const snackKcal=snacks.reduce((s,n)=>s+(n.kcal||0),0);
   const planAvg=loggedDays.length>0?planKcal/loggedDays.length:0;
   const cheatAvg=cheatKcal/daysBack;
-  const avgConsumed=planAvg+cheatAvg;
+  const snackAvg=snackKcal/daysBack;
+  const avgConsumed=planAvg+cheatAvg+snackAvg;
   const tdee=calcTDEE();
   const deficit=tdee?tdee-avgConsumed:null;
   const expectedKgLoss=deficit?(deficit*daysBack)/7700:null;
@@ -1229,6 +1490,7 @@ function analyzeWindow(daysBack){
     daysTotal:daysBack, daysLogged:loggedDays.length,
     completeness:loggedDays.length/daysBack,
     avgConsumed, planAvg, cheatAvg, cheatCount:cheats.length,
+    snackAvg, snackCount:snacks.length,
     tdee, deficit, expectedKgLoss, realKgLoss, adjustedTDEE,
   };
 }
@@ -1319,7 +1581,8 @@ function renderAnalysisCard(a){
       <span class="mono fw-800 text-ac">${Math.round(a.avgConsumed)} kcal/día</span>
     </div>
     <div class="row text-xs text-mt" style="margin-bottom:2px"><span>↳ del plan</span><span class="mono">${Math.round(a.planAvg)} (${planPct}%)</span></div>
-    <div class="row text-xs text-mt"><span>↳ cheats (${a.cheatCount})</span><span class="mono">${Math.round(a.cheatAvg)} (${cheatPct}%)</span></div>`;
+    <div class="row text-xs text-mt"><span>↳ cheats (${a.cheatCount})</span><span class="mono">${Math.round(a.cheatAvg)} (${cheatPct}%)</span></div>
+    ${a.snackCount>0?`<div class="row text-xs text-mt"><span>↳ snacks (${a.snackCount})</span><span class="mono">${Math.round(a.snackAvg)} (${a.avgConsumed>0?Math.round(a.snackAvg/a.avgConsumed*100):0}%)</span></div>`:''}`;
   if(a.tdee){
     html+=`<div style="height:1px;background:var(--bd);margin:12px 0"></div>
     <div class="row mb-8"><span class="text-sm">TDEE estimado</span><span class="mono fw-700">${a.tdee} kcal/día</span></div>
@@ -1354,6 +1617,8 @@ function renderProgress(){
   } else {
     html+=renderStatusBanner(calcWeightTrend());
     html+=renderAnalysisCard(analyzeWindow(28));
+    html+=renderCheckinCard();
+    html+=renderAdherenceCard();
   }
   const weights=load('food-weight',[]);
   const sorted=[...weights].sort((a,b)=>b.date.localeCompare(a.date));
@@ -1364,6 +1629,7 @@ function renderProgress(){
     ${weights.length>=2?drawWeightChart():''}
     <button class="btn mt-12" onclick="openWeightModal()">+ Registrar peso</button>
   </div>`;
+  if(hasProfile) html+=renderPhotoCard();
   if(hasProfile){
     const tdee=calcTDEE();
     const factorLabel=profile.factor>=1.65?'Activo':profile.factor>=1.55?'Poco activo':'Sedentario';
