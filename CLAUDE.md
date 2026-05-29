@@ -27,7 +27,10 @@ App single-file. Trackeo comidas + cheats + peso + déficit. Personal de Joaco.
 | `food-cheat` | `[{date, note, kcal}]` |
 | `food-weight` | `[{date, kg}]` |
 | `food-profile` | `{altura, edad, sexo, factor}` |
-| `food-creatine-load` | `{start:"YYYY-MM-DD"}` o null |
+| `food-creatine-load` | `{start:"YYYY-MM-DD"}` o null (loading 5 días) |
+| `food-snacks` | `[{date, note, kcal}]` — extras no-cheat |
+| `food-checkin` | `[{date, fuerza, energia, hambre, sueno, humor}]` — '+'/'='/'-' por campo, 1 por semana ISO |
+| `food-photo` | `[{date}]` — solo fecha, fotos viven en galería del celu |
 
 ## Modelo meal
 
