@@ -759,9 +759,9 @@ function renderToday(){
       <div class="text-xs text-mt fw-600 mb-12" style="text-transform:uppercase;letter-spacing:1.5px">Próxima comida</div>
       <div class="card" style="cursor:default;padding:24px;${border};${bg}">
         <div class="mono text-mt fw-700 mb-8" style="font-size:13px">${nextMeal.time}</div>
-        <div style="font-size:24px;font-weight:800;margin-bottom:8px">${nextMeal.icon} ${nextMeal.name}${nextMeal.optional?' <span class="tag tag-opt" style="font-size:10px;vertical-align:middle">OPCIONAL</span>':''}</div>
-        ${nextMeal.supplements&&nextMeal.supplements.length?nextMeal.supplements.map(s=>`<div class="supp-tag">💊 ${s}</div>`).join(''):''}
-        <div class="text-sm" style="color:#a0a0b0;line-height:1.6">${nextMeal.desc}</div>
+        <div style="font-size:24px;font-weight:800;margin-bottom:8px">${esc(nextMeal.icon)} ${esc(nextMeal.name)}${nextMeal.optional?' <span class="tag tag-opt" style="font-size:10px;vertical-align:middle">OPCIONAL</span>':''}</div>
+        ${nextMeal.supplements&&nextMeal.supplements.length?nextMeal.supplements.map(s=>`<div class="supp-tag">💊 ${esc(s)}</div>`).join(''):''}
+        <div class="text-sm" style="color:#a0a0b0;line-height:1.6">${esc(nextMeal.desc)}</div>
         ${nextMeal.zeroCarbos?'<div class="zero-carb" style="margin-top:10px">🚫 CERO CARBOS</div>':''}
         <div class="flex gap-8 mt-12" style="flex-wrap:wrap">${mealTags(nextMeal)}</div>
       </div>
@@ -784,7 +784,7 @@ function renderToday(){
       html+=`<div class="text-xs text-mt fw-600 mb-8" style="text-transform:uppercase;letter-spacing:1.5px">Completadas</div>`;
       checkedMeals.forEach(m=>{
         const v=log.meals[m.id];
-        const label=(v&&v.custom)?customMealLabel(v):m.icon+' '+m.name;
+        const label=(v&&v.custom)?customMealLabel(v):esc(m.icon)+' '+esc(m.name);
         html+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)22">
           <span style="color:var(--gn);font-size:16px">✓</span>
           <span class="mono text-mt" style="font-size:11px;min-width:40px">${m.time}</span>
@@ -795,7 +795,7 @@ function renderToday(){
         html+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)22">
           <span style="color:var(--dn);font-size:16px">✕</span>
           <span class="mono text-mt" style="font-size:11px;min-width:40px">${m.time}</span>
-          <span class="text-sm fw-600" style="color:var(--dn);text-decoration:line-through">${m.icon} ${m.name}${m.optional?' <span class="text-xs text-mt" style="text-decoration:none">· opc.</span>':''}</span>
+          <span class="text-sm fw-600" style="color:var(--dn);text-decoration:line-through">${esc(m.icon)} ${esc(m.name)}${m.optional?' <span class="text-xs text-mt" style="text-decoration:none">· opc.</span>':''}</span>
         </div>`;
       });
     }
@@ -808,7 +808,7 @@ function renderToday(){
         html+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)22">
           <span style="color:var(--bd);font-size:16px">○</span>
           <span class="mono text-mt" style="font-size:11px;min-width:40px">${m.time}</span>
-          <span class="text-sm text-mt">${m.icon} ${m.name}${m.optional?' <span class="text-xs">· opc.</span>':''}</span>
+          <span class="text-sm text-mt">${esc(m.icon)} ${esc(m.name)}${m.optional?' <span class="text-xs">· opc.</span>':''}</span>
         </div>`;
       });
     }
@@ -829,7 +829,7 @@ function renderToday(){
     scn.meals.forEach(m=>{
       const v=log.meals[m.id];
       const ok=isMealDone(v);
-      const label=(v&&v.custom)?customMealLabel(v):m.icon+' '+m.name;
+      const label=(v&&v.custom)?customMealLabel(v):esc(m.icon)+' '+esc(m.name);
       html+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)22">
         <span style="color:${ok?'var(--gn)':'var(--dn)'};font-size:16px">${ok?'✓':'✕'}</span>
         <span class="mono text-mt" style="font-size:11px;min-width:40px">${m.time}</span>
@@ -909,7 +909,7 @@ function editPlan(idx){
   let html=`<div style="font-size:18px;font-weight:800;margin-bottom:16px">Editar: ${scn.label}</div>`;
   scn.meals.forEach((m,mi)=>{
     html+=`<div class="card" onclick="editMeal(${mi})" style="cursor:pointer">
-      <div class="row"><div><div class="fw-700">${m.icon} ${m.name}</div><div class="text-xs text-mt mt-4">${m.prot||0}p · ${m.carbs||0}c · ${m.fat||0}f · ${mealKcal(m)} kcal</div></div><div style="color:var(--mt)">✎</div></div>
+      <div class="row"><div><div class="fw-700">${esc(m.icon)} ${esc(m.name)}</div><div class="text-xs text-mt mt-4">${m.prot||0}p · ${m.carbs||0}c · ${m.fat||0}f · ${mealKcal(m)} kcal</div></div><div style="color:var(--mt)">✎</div></div>
     </div>`;
   });
   html+=`<button class="btn-out mb-12" onclick="addMealToPlan()">+ Agregar comida</button>`;
@@ -1534,6 +1534,19 @@ function calcTDEE(){
   return Math.round(bmr*(profile.factor||1.5));
 }
 
+// Pendiente kg/día por mínimos cuadrados sobre [{date,kg}] ordenado asc. null si <2 puntos o sin dispersión en x.
+function weightSlopePerDay(ws){
+  if(ws.length<2) return null;
+  const t0=new Date(ws[0].date+"T12:00:00Z");
+  const pts=ws.map(w=>({x:(new Date(w.date+"T12:00:00Z")-t0)/86400000, y:w.kg}));
+  const n=pts.length;
+  const mx=pts.reduce((s,p)=>s+p.x,0)/n;
+  const my=pts.reduce((s,p)=>s+p.y,0)/n;
+  let num=0,den=0;
+  pts.forEach(p=>{num+=(p.x-mx)*(p.y-my); den+=(p.x-mx)*(p.x-mx);});
+  return den===0?null:num/den;
+}
+
 function calcWeightTrend(){
   const weights=[...load('food-weight',[])].filter(w=>!isLoadingDay(w.date)).sort((a,b)=>a.date.localeCompare(b.date));
   if(weights.length<2) return null;
@@ -1543,10 +1556,10 @@ function calcWeightTrend(){
   const cutoff=cursor.toISOString().slice(0,10);
   const recent=weights.filter(w=>w.date>=cutoff);
   if(recent.length<2) return null;
-  const first=recent[0], last=recent[recent.length-1];
-  const daysSpan=(new Date(last.date+"T12:00:00Z")-new Date(first.date+"T12:00:00Z"))/86400000;
+  const daysSpan=(new Date(recent[recent.length-1].date+"T12:00:00Z")-new Date(recent[0].date+"T12:00:00Z"))/86400000;
   if(daysSpan<7) return null;
-  return ((last.kg-first.kg)/daysSpan)*7;
+  const slope=weightSlopePerDay(recent);
+  return slope===null?null:slope*7;
 }
 
 function analyzeWindow(daysBack){
@@ -1583,8 +1596,9 @@ function analyzeWindow(daysBack){
   let realKgLoss=null, adjustedTDEE=null;
   const weights=[...load('food-weight',[])].sort((a,b)=>a.date.localeCompare(b.date));
   const winWeights=weights.filter(w=>dates.includes(w.date)&&!isLoadingDay(w.date));
-  if(winWeights.length>=2){
-    realKgLoss=winWeights[0].kg-winWeights[winWeights.length-1].kg;
+  const slope=weightSlopePerDay(winWeights);
+  if(slope!==null){
+    realKgLoss=-slope*daysBack;
     if(avgConsumed>0) adjustedTDEE=Math.round(avgConsumed+(realKgLoss*7700/daysBack));
   }
   return {
