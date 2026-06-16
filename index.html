@@ -222,6 +222,12 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
     </label>
   </div>
   <div class="sec" style="padding-top:0">
+    <div class="sec-title">Cheats</div>
+    <label class="label">Presupuesto semanal (kcal)</label>
+    <input id="cfg-cheat-budget" type="number" inputmode="numeric" class="inp inp-num" onchange="saveCheatBudget()">
+    <div class="text-xs text-mt mt-4">Total de kcal de cheats por semana. Dos alfajores ≠ dos McDonald's. Default 1500.</div>
+  </div>
+  <div class="sec" style="padding-top:0">
     <div class="sec-title">Historial</div>
     <button class="btn-out" onclick="navTo('pg-del')" style="margin-bottom:12px">Borrar días del historial</button>
   </div>
@@ -303,7 +309,7 @@ const DEFAULT_SCENARIOS = [
 
 let scenarios;
 const CHEAT_INTERVAL = 4;
-const CHEAT_BUDGET = 2;
+const CHEAT_KCAL_BUDGET_DEFAULT = 1500;
 
 const PLANS_REV = 4;
 const PLAN_PATCHES = {
@@ -417,6 +423,21 @@ function dayKcal(dateStr){
   return kcal;
 }
 
+function dayMacros(dateStr){
+  let p=0,c=0,f=0;
+  const log=mealLog[dateStr];
+  if(log&&log.scenario){
+    const scn=scenarios.find(s=>s.id===log.scenario);
+    if(scn) scn.meals.forEach(m=>{
+      const v=log.meals[m.id];
+      if(v==='skipped') return;
+      const src=(v&&v.custom)?v:m;
+      p+=src.prot||0; c+=src.carbs||0; f+=src.fat||0;
+    });
+  }
+  return {p,c,f};
+}
+
 // ── State ──
 let mealLog, cheatLog, snackLog, checkinLog, photoLog, calY, calM, activeDate, selectedDelDays=new Set();
 function load(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}}
@@ -424,6 +445,8 @@ function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 function td(){const d=new Date(Date.now()-3*3600*1000);return d.toISOString().slice(0,10);}
 function isoWeekStart(dStr){const d=new Date(dStr+"T12:00:00Z");const dow=d.getUTCDay();const diff=dow===0?-6:(1-dow);d.setUTCDate(d.getUTCDate()+diff);return d.toISOString().slice(0,10);}
 function cheatsInWeek(dateStr){const wk=isoWeekStart(dateStr);return cheatLog.filter(c=>isoWeekStart(c.date)===wk).length;}
+function cheatKcalInWeek(dateStr){const wk=isoWeekStart(dateStr);return cheatLog.filter(c=>isoWeekStart(c.date)===wk).reduce((s,c)=>s+(c.kcal||0),0);}
+function cheatKcalBudget(){return load('food-cfg',{}).cheatKcalBudget||CHEAT_KCAL_BUDGET_DEFAULT;}
 function fd(d){try{return new Date(d+"T12:00:00").toLocaleDateString("es-AR",{day:"numeric",month:"short"});}catch{return d;}}
 function fdLong(d){try{return new Date(d+"T12:00:00").toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long"});}catch{return d;}}
 function $(id){return document.getElementById(id);}
@@ -490,6 +513,13 @@ function navTo(id){
   if(id==='pg-cheat') renderCheat();
   if(id==='pg-del') renderDelDays();
   if(id==='pg-progress') renderProgress();
+  if(id==='pg-config'){const i=$('cfg-cheat-budget');if(i)i.value=cheatKcalBudget();}
+}
+
+function saveCheatBudget(){
+  const cfg=load('food-cfg',{});
+  cfg.cheatKcalBudget=Math.max(0,parseInt($('cfg-cheat-budget').value)||CHEAT_KCAL_BUDGET_DEFAULT);
+  save('food-cfg',cfg);
 }
 
 function closeModal(){$("modal").classList.remove('show');}
@@ -710,6 +740,15 @@ function renderToday(){
       <div style="height:100%;width:${pct}%;background:${marked>=total?(done===total?'var(--gn)':'var(--yw)'):'var(--ac)'};border-radius:3px;transition:width 0.3s"></div>
     </div>
     <div class="row mt-8"><span class="text-xs text-mt">Consumidas</span><span class="text-xs mono fw-700" style="color:var(--ac)">${consumedKcal} / ${totalMacros.kcal} kcal</span></div>
+  </div>`;
+
+  const dm=dayMacros(activeDate);
+  const protColor=dm.p>=totalMacros.p?'var(--gn)':(dm.p>=totalMacros.p*0.9?'var(--yw)':'var(--dn)');
+  html+=`<div class="card" style="cursor:default;margin-top:12px">
+    <div class="text-xs text-mt fw-600 mb-8">PROYECCIÓN DEL DÍA${actedAny?'':' · plan completo'}</div>
+    <div class="row mb-4"><span class="text-sm fw-700">Proteína</span><span class="mono fw-800" style="color:${protColor}">${dm.p} / ${totalMacros.p}g</span></div>
+    <div class="row text-xs text-mt"><span>Carbos</span><span class="mono">${dm.c} / ${totalMacros.c}g</span></div>
+    <div class="row text-xs text-mt"><span>Grasas</span><span class="mono">${dm.f} / ${totalMacros.f}g</span></div>
   </div>`;
 
   if(nextMeal){
@@ -1046,10 +1085,11 @@ function confirmCheat(){
   const date=window._cheatDate||td();
   cheatLog.push({date:date,note:note,kcal:kcal});
   save("food-cheat",cheatLog);
-  const wkCount=cheatsInWeek(date);
+  const wkKcal=cheatKcalInWeek(date);
+  const budget=cheatKcalBudget();
   closeModal();
   renderCheat();
-  if(wkCount>CHEAT_BUDGET) alert(`⚠ Van ${wkCount} cheats esta semana (presupuesto ${CHEAT_BUDGET}). Tu peso lo va a notar.`);
+  if(wkKcal>budget) alert(`⚠ Vas ${wkKcal} kcal en cheats esta semana (presupuesto ${budget}). Tu peso lo va a notar.`);
 }
 
 function deleteCheat(idx){
@@ -1071,14 +1111,17 @@ function renderCheat(){
   $("cheat-fill").style.background=color;
   $("cheat-next").textContent=days>=CHEAT_INTERVAL?'✓ Disponible':`En ${CHEAT_INTERVAL-days} días`;
 
-  // Presupuesto semanal
-  const wkCount=cheatsInWeek(td());
-  const wkColor=wkCount<CHEAT_BUDGET?'var(--gn)':wkCount===CHEAT_BUDGET?'var(--yw)':'var(--dn)';
-  const wkMsg=wkCount<CHEAT_BUDGET?`Te queda${CHEAT_BUDGET-wkCount>1?'n':''} ${CHEAT_BUDGET-wkCount}`:wkCount===CHEAT_BUDGET?'Presupuesto al límite':`${wkCount-CHEAT_BUDGET} de más · tu peso lo nota`;
+  // Presupuesto semanal (kcal)
+  const budget=cheatKcalBudget();
+  const wkKcal=cheatKcalInWeek(td());
+  const wkN=cheatsInWeek(td());
+  const ratio=budget>0?wkKcal/budget:0;
+  const wkColor=ratio>1?'var(--dn)':ratio>=0.8?'var(--yw)':'var(--gn)';
+  const wkMsg=wkKcal<=budget?`Te quedan ${budget-wkKcal} kcal · ${wkN} cheat${wkN===1?'':'s'}`:`${wkKcal-budget} kcal de más · tu peso lo nota`;
   $("cheat-week").innerHTML=`<div class="card" style="cursor:default;border-color:${wkColor}">
     <div class="row">
       <div><div class="text-xs text-mt fw-600">ESTA SEMANA</div><div class="text-xs text-mt mt-4">${wkMsg}</div></div>
-      <div class="mono fw-800" style="font-size:22px;color:${wkColor}">${wkCount}/${CHEAT_BUDGET}</div>
+      <div class="mono fw-800" style="font-size:20px;color:${wkColor}">${wkKcal}<span style="font-size:12px;color:var(--mt)">/${budget}</span></div>
     </div>
   </div>`;
 
@@ -1107,6 +1150,7 @@ function exportFood(){
     weights:load('food-weight',[]),
     profile:load('food-profile',null),
     creatineLoad:load('food-creatine-load',null),
+    cfg:load('food-cfg',null),
   };
   const json=JSON.stringify(data,null,2);
   const blob=new Blob([json],{type:'application/json'});
@@ -1164,6 +1208,7 @@ function doImportFood(mode){
     if(data.weights) save('food-weight',data.weights);
     if(data.profile) save('food-profile',data.profile);
     if(data.creatineLoad) save('food-creatine-load',data.creatineLoad);
+    if(data.cfg) save('food-cfg',data.cfg);
   }
   save("food-log",mealLog);save("food-cheat",cheatLog);
   save("food-snacks",snackLog);save("food-checkin",checkinLog);save("food-photo",photoLog);
@@ -1597,7 +1642,8 @@ function renderWeeklyVerdict(){
   }
   const trend=calcWeightTrend();
   const a=analyzeWindow(28);
-  const wkCheats=cheatsInWeek(td());
+  const budget=cheatKcalBudget();
+  const wkCheatKcal=cheatKcalInWeek(td());
   const fact=(a.realKgLoss!==null)
     ? `En 4 sem ${a.realKgLoss>=0?'bajaste':'subiste'} ${Math.abs(a.realKgLoss).toFixed(1)} kg${a.expectedKgLoss!==null?` (esperabas ${a.expectedKgLoss.toFixed(1)})`:''}. `
     : '';
@@ -1610,14 +1656,14 @@ function renderWeeklyVerdict(){
     msg=`${fact}${trend.toFixed(2)} kg/sem · riesgo de perder músculo. Subí ~300–500 kcal/día.`;
   } else if(trend<=-0.25){
     emoji='✓'; color='var(--gn)'; title='Vas bien';
-    msg=`${fact}${trend.toFixed(2)} kg/sem · cut sostenible. Sostené ≤${CHEAT_BUDGET} cheats/semana.`;
+    msg=`${fact}${trend.toFixed(2)} kg/sem · cut sostenible. Mantené los cheats bajo ${budget} kcal/semana.`;
   } else {
     const subiendo=trend>0.1;
     emoji=subiendo?'↑':'⚠'; color=subiendo?'var(--dn)':'var(--yw)';
     title=subiendo?'Estás subiendo':'Estancado';
     const cutKcalDay=Math.round(((0.4-(-trend))*7700)/7);
     let action='servite una porción menos en almuerzo y cena';
-    if(wkCheats>=CHEAT_BUDGET&&a.cheatAvg>50) action=`bajá a ${CHEAT_BUDGET} cheats (tus cheats suman ~${Math.round(a.cheatAvg)} kcal/día) y servite una porción menos en la cena`;
+    if(wkCheatKcal>budget) action=`recortá cheats (vas ${wkCheatKcal} de ${budget} kcal esta semana) y servite una porción menos en la cena`;
     else if(a.cheatAvg>50) action=`recortá cheats (~${Math.round(a.cheatAvg)} kcal/día) y servite una porción menos en la cena`;
     msg=`${fact}Tu ingesta real ≈ tu gasto. Para bajar ~0,4 kg/sem necesitás ~${cutKcalDay} kcal/día menos: ${action}.`;
   }
