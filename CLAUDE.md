@@ -2,6 +2,15 @@
 
 App single-file. Trackeo comidas + cheats + peso + déficit. Personal de Joaco.
 
+## Modelo actual: tracking por excepción (desde 2026-08-24)
+
+- `AUTO_START='2026-08-24'`. Día `>= AUTO_START` = "auto": **sin registro cuenta como rutina cumplida**. Solo se registran excepciones: salteo, reemplazo (alt o plato del catálogo), cheat, snack.
+- Un solo scenario activo: `rutina` (4 comidas, ~1800 kcal, ~207g prot). Los 4 scenarios viejos quedan en `food-plans` con `legacy:true` — el historial pre-cutover los sigue leyendo. No borrarlos.
+- `isAutoDay(d)` / `rutinaScn()` = helpers centrales. Branch auto en: `dayKcal`, `dayMacros`, `getDayStatus`, `isDayComplete`, `getDayLog`, `analyzeWindow`, `renderAdherenceCard`, `renderToday` (→ `renderAutoDay`).
+- Días auto futuros no cuentan (status null, kcal 0).
+- `analyzeWindow`: todo día auto cuenta como "logged" con consumo = rutina − salteos + reemplazos. Completeness sube sola con el tiempo.
+- Streak ahora = días sin saltear comida (crece sin abrir la app; by design). `celebrateDay` casi no dispara en días auto (día ya nace completo).
+
 ## Stack
 - HTML+CSS+JS vanilla. ES2020+. Sin frameworks, sin build, sin deps.
 - PWA: `index.html` + `sw.js`. Manifest e icon generados runtime (canvas/blob).
@@ -21,7 +30,7 @@ App single-file. Trackeo comidas + cheats + peso + déficit. Personal de Joaco.
 
 | Key | Contenido |
 |---|---|
-| `food-plans` | Array scenarios (4: tarde, manana, descanso, futbol) |
+| `food-plans` | Array scenarios: `rutina` (activo) + 4 legacy (`legacy:true`) |
 | `food-plans-rev` | Int. Última rev de migración aplicada |
 | `food-log` | `{YYYY-MM-DD: {scenario, meals: {mealId: true \| 'skipped' \| {custom, dish, side, prot, carbs, fat}}}}` |
 | `food-cheat` | `[{date, note, kcal}]` |
@@ -36,10 +45,12 @@ App single-file. Trackeo comidas + cheats + peso + déficit. Personal de Joaco.
 
 ```js
 {id, time, icon, name, desc, prot, carbs, fat,
- training?, zeroCarbos?, flexible?, optional?, supplements?:string[]}
+ training?, zeroCarbos?, flexible?, optional?, supplements?:string[],
+ alts?:[{name, prot, carbs, fat}]}
 ```
 
-- `flexible:true` → habilita botón "🔄 Otro" (custom dish). Default true para `almuerzo`/`cena`.
+- `alts` → variantes con macros propios (ej: desayuno con huevos, cena atún). Se eligen en el modal de la comida (`openMealActions` → `pickAlt`). Se guardan como `{custom:true, name, prot, carbs, fat}`; `customMealLabel` devuelve `v.name` si existe.
+- `flexible:true` → habilita "🍽️ Comí otro plato" (catálogo DISHES). Default true para `almuerzo`/`cena`.
 - `optional:true` → no penaliza el cálculo de día complete. Badge OPCIONAL.
 - `supplements:[]` → array strings. Render como callout naranja (`.supp-tag`).
 
@@ -52,8 +63,8 @@ Field guardado en custom meal: `dish` (nuevo) o `protein` (legacy backward compa
 
 | ID | Nav | Función |
 |---|---|---|
-| `pg-today` | ✓ Hoy | Comida actual, próxima, completadas, deshacer, cambiar día. Streak en header. |
-| `pg-plans` | 📋 Planes | Detalle 4 scenarios. Editable (nombre, hora, icon, desc, macros, flags). |
+| `pg-today` | ✓ Hoy | Días auto: lista de comidas default-✓, tocar una abre modal de excepción (volver al plan / alt / otro plato / salteé). Días pre-cutover: UI vieja de checkboxes. Streak en header. |
+| `pg-plans` | 📋 Planes | Detalle de la rutina única (`showPlan()` sin args, renderiza primer scenario no-legacy). Editable. |
 | `pg-cal` | 📅 Calendario | Mes con colores (complete/partial/cheat). Click día → abre en `pg-today`. |
 | `pg-cheat` | 🍕 Cheat | Racha sin cheat, registrar cheat con date picker + kcal libre. |
 | `pg-progress` | 📊 Progreso | Peso + perfil + análisis 4 sem (TDEE, déficit, pérdida real vs esperada) + carga creatina. |
@@ -89,6 +100,7 @@ Field guardado en custom meal: `dish` (nuevo) o `protein` (legacy backward compa
 - `applyPlansMigration()` en `init()` corre patches del rev guardado+1 al actual.
 - Cada patch = `{scn, meal, ...campos a sobreescribir}`. No pisa campos no listados.
 - Sirve para actualizar scenarios sin que el user toque "Resetear planes" (y sin perder ediciones manuales).
+- Rev 6 es especial: bloque en `applyPlansMigration` que marca todo legacy y unshiftea `rutina` (guard: `!scenarios.some(s=>s.id==='rutina')`). "Resetear planes" repone la rutina default pero preserva los legacy.
 
 ## Service Worker
 
