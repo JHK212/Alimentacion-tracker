@@ -222,6 +222,12 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
     <div class="text-xs text-mt mt-4">Total de kcal de cheats por semana. Dos alfajores ≠ dos McDonald's. Default 1500.</div>
   </div>
   <div class="sec" style="padding-top:0">
+    <div class="sec-title">Estimador IA de cheats</div>
+    <label class="label">Gemini API key</label>
+    <input id="cfg-gemini-key" type="password" autocomplete="off" class="inp" onchange="saveGeminiKey()" placeholder="AIza...">
+    <div class="text-xs text-mt mt-4" style="line-height:1.5">Gratis en aistudio.google.com → Get API key. Se guarda solo en este dispositivo. Con key cargada aparece el botón ✨ al registrar un cheat.</div>
+  </div>
+  <div class="sec" style="padding-top:0">
     <div class="sec-title">Historial</div>
     <button class="btn-out" onclick="navTo('pg-del')" style="margin-bottom:12px">Borrar días del historial</button>
   </div>
@@ -353,6 +359,22 @@ const SIDES = [
   {id:'fideos', name:'Fideos', emoji:'🍝', prot:8, carbs:43, fat:1},
   {id:'ensalada', name:'Ensalada verde', emoji:'🥗', prot:1, carbs:3, fat:0},
   {id:'nada', name:'Sin acompañamiento', emoji:'❌', prot:0, carbs:0, fat:0},
+];
+
+// Cheats frecuentes: kcal aproximadas de porciones argentinas típicas. Tap = suma al total.
+const CHEAT_PRESETS = [
+  {e:'🍕', n:'Porción muzza', k:280},
+  {e:'🥟', n:'Empanada', k:290},
+  {e:'🍔', n:'Hamburguesa completa', k:800},
+  {e:'🍟', n:'Papas fritas', k:400},
+  {e:'🌭', n:'Pancho', k:350},
+  {e:'🍝', n:'Plato de pasta', k:600},
+  {e:'🧁', n:'Alfajor', k:200},
+  {e:'🍦', n:'Bocha helado', k:180},
+  {e:'🥐', n:'Medialuna', k:180},
+  {e:'🍺', n:'Porrón / lata birra', k:200},
+  {e:'🍷', n:'Copa de vino', k:120},
+  {e:'🍫', n:'Chocolate (50g)', k:270},
 ];
 
 const LEGACY_PROTEINS = [
@@ -522,7 +544,10 @@ function navTo(id){
   if(id==='pg-cheat') renderCheat();
   if(id==='pg-del') renderDelDays();
   if(id==='pg-progress') renderProgress();
-  if(id==='pg-config'){const i=$('cfg-cheat-budget');if(i)i.value=cheatKcalBudget();}
+  if(id==='pg-config'){
+    const i=$('cfg-cheat-budget');if(i)i.value=cheatKcalBudget();
+    const g=$('cfg-gemini-key');if(g)g.value=geminiKey();
+  }
 }
 
 function saveCheatBudget(){
@@ -1263,18 +1288,77 @@ function pickCheatDate(dateStr){
   let html='<div style="font-size:18px;font-weight:800;margin-bottom:4px">🍕 Registrar Cheat</div>';
   html+=`<div class="text-sm text-mt mb-18">${fdLong(dateStr)}</div>`;
   const _recent=cheatLog.filter(c=>c.kcal>0).slice(-5);
-  const _def=_recent.length?Math.round(_recent.reduce((s,c)=>s+c.kcal,0)/_recent.length/50)*50:500;
+  window._cheatDef=_recent.length?Math.round(_recent.reduce((s,c)=>s+c.kcal,0)/_recent.length/50)*50:500;
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:14px">';
+  CHEAT_PRESETS.forEach((p,i)=>{
+    html+=`<button onclick="addCheatPreset(${i})" style="background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:8px 4px;cursor:pointer;color:var(--tx);text-align:center">
+      <div style="font-size:16px">${p.e}</div>
+      <div class="text-xs" style="line-height:1.2;margin-top:2px">${p.n}</div>
+      <div class="text-xs text-mt mono">${p.k}</div>
+    </button>`;
+  });
+  html+='</div>';
   html+=`<div class="mb-12"><label class="label">¿Qué comiste?</label><input id="cheat-input" class="inp" placeholder="Ej: Pizza, helado..."></div>`;
-  html+=`<div class="mb-18"><label class="label">Calorías aprox (opcional)</label><input id="cheat-kcal" type="number" class="inp inp-num" placeholder="500" value="${_def}"></div>`;
+  html+=`<div class="mb-12"><label class="label">Calorías aprox</label><input id="cheat-kcal" type="number" class="inp inp-num" placeholder="${window._cheatDef}"></div>`;
+  if(geminiKey()) html+='<button id="cheat-ai-btn" class="btn-out mb-12" onclick="estimateCheatKcal()" style="color:var(--ac);border-color:rgba(230,149,0,0.3)">✨ Estimar con IA</button>';
+  html+='<div id="cheat-ai-out"></div>';
   html+='<button class="btn mb-12" onclick="confirmCheat()">Registrar</button>';
   html+='<button class="btn-out" onclick="renderCheatCal()">📅 Elegir otra fecha</button>';
   $("modal-content").innerHTML=html;
-  setTimeout(()=>$("cheat-input").focus(),300);
+}
+
+function addCheatPreset(i){
+  const p=CHEAT_PRESETS[i];
+  if(!p) return;
+  const ni=$("cheat-input"), ki=$("cheat-kcal");
+  ni.value=ni.value?ni.value+' + '+p.n:p.n;
+  ki.value=(parseInt(ki.value)||0)+p.k;
+}
+
+// ── Estimador IA (Gemini free tier, key personal en localStorage) ──
+const GEMINI_MODEL='gemini-flash-latest';
+function geminiKey(){return (load('food-cfg',{}).geminiKey||'').trim();}
+
+async function estimateCheatKcal(){
+  const note=$("cheat-input").value.trim();
+  if(!note){alert('Escribí qué comiste primero');return;}
+  const key=geminiKey();
+  if(!key) return;
+  const btn=$("cheat-ai-btn");
+  btn.disabled=true;btn.textContent='✨ Estimando…';
+  try{
+    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        contents:[{parts:[{text:'Estimá las calorías totales de esta comida, con porciones típicas de Argentina. Si algo es ambiguo, asumí la porción estándar. Comida: "'+note+'"'}]}],
+        generationConfig:{
+          responseMimeType:'application/json',
+          responseSchema:{type:'OBJECT',properties:{kcal:{type:'INTEGER'},detalle:{type:'STRING',description:'desglose muy breve por ítem, en español'}},required:['kcal','detalle']}
+        }
+      })
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const data=await r.json();
+    const out=JSON.parse(data.candidates[0].content.parts[0].text);
+    if(!out||!isFinite(out.kcal)) throw new Error('respuesta inválida');
+    $("cheat-kcal").value=Math.round(out.kcal);
+    $("cheat-ai-out").innerHTML=`<div class="text-xs mb-12" style="color:var(--ac);line-height:1.5">✨ ~${Math.round(out.kcal)} kcal · ${esc(out.detalle)}</div>`;
+  }catch(e){
+    $("cheat-ai-out").innerHTML=`<div class="text-xs mb-12" style="color:var(--dn)">No pude estimar (${esc(e.message)}). Poné el número a mano.</div>`;
+  }
+  btn.disabled=false;btn.textContent='✨ Estimar con IA';
+}
+
+function saveGeminiKey(){
+  const cfg=load('food-cfg',{});
+  cfg.geminiKey=$('cfg-gemini-key').value.trim();
+  save('food-cfg',cfg);
 }
 
 function confirmCheat(){
   const note=$("cheat-input").value||"Cheat meal";
-  const kcal=parseInt($("cheat-kcal").value)||0;
+  const kcal=parseInt($("cheat-kcal").value)||window._cheatDef||0;
   const date=window._cheatDate||td();
   cheatLog.push({date:date,note:note,kcal:kcal});
   save("food-cheat",cheatLog);
