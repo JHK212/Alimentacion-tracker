@@ -1478,7 +1478,8 @@ function openRecipeForm(id,draft){
   html+=`<div class="flex gap-8 mb-12"><div class="flex-1" style="flex:3"><label class="label">NOMBRE</label><input id="rc-name" value="${esc(r.name||'')}" style="${inp}"></div><div class="flex-1"><label class="label">EMOJI</label><input id="rc-emoji" value="${esc(r.emoji||'🍲')}" style="${inp};text-align:center"></div></div>`;
   html+=`<div class="flex gap-8 mb-12"><div class="flex-1"><label class="label">RINDE (porciones)</label><input id="rc-serv" type="number" inputmode="numeric" value="${r.servings||4}" style="${inpM}"></div></div>`;
   html+=`<div class="label">MACROS POR PORCIÓN (g)</div>`;
-  html+=`<div class="flex gap-8 mb-12"><div class="flex-1"><label class="label">PROT</label><input id="rc-prot" type="number" value="${r.prot||0}" style="${inpM}"></div><div class="flex-1"><label class="label">CARBS</label><input id="rc-carbs" type="number" value="${r.carbs||0}" style="${inpM}"></div><div class="flex-1"><label class="label">GRASAS</label><input id="rc-fat" type="number" value="${r.fat||0}" style="${inpM}"></div></div>`;
+  html+=`<div class="flex gap-8 mb-8"><div class="flex-1"><label class="label">PROT</label><input id="rc-prot" type="number" value="${r.prot||0}" style="${inpM}" oninput="updRecipeKcal()"></div><div class="flex-1"><label class="label">CARBS</label><input id="rc-carbs" type="number" value="${r.carbs||0}" style="${inpM}" oninput="updRecipeKcal()"></div><div class="flex-1"><label class="label">GRASAS</label><input id="rc-fat" type="number" value="${r.fat||0}" style="${inpM}" oninput="updRecipeKcal()"></div></div>`;
+  html+=`<div id="rc-kcal" class="text-sm mono fw-700 mb-12" style="text-align:center;color:var(--ac)">= ${mealKcal(r)} kcal por porción</div>`;
   html+=`<div class="mb-12"><label class="label">INGREDIENTES (uno por línea, con cantidad)</label><textarea id="rc-ing" style="${inp};resize:vertical;min-height:90px;font-size:14px">${esc((r.ingredients||[]).join('\n'))}</textarea></div>`;
   html+=`<div class="mb-12"><label class="label">PASO A PASO (uno por línea)</label><textarea id="rc-steps" style="${inp};resize:vertical;min-height:90px;font-size:14px">${esc((r.steps||[]).join('\n'))}</textarea></div>`;
   html+='</div>';
@@ -1486,6 +1487,12 @@ function openRecipeForm(id,draft){
   html+='<button class="btn-out" onclick="closeModal()">Cancelar</button>';
   $('modal-content').innerHTML=html;
   $('modal').classList.add('show');
+}
+
+function updRecipeKcal(){
+  const k=(parseInt($('rc-prot').value)||0)*4+(parseInt($('rc-carbs').value)||0)*4+(parseInt($('rc-fat').value)||0)*9;
+  const el=$('rc-kcal');
+  if(el) el.textContent='= '+k+' kcal por porción';
 }
 
 function saveRecipeForm(){
