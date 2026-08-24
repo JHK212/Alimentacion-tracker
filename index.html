@@ -1303,7 +1303,8 @@ function pickCheatDate(dateStr){
   if(geminiKey()) html+='<button id="cheat-ai-btn" class="btn-out mb-12" onclick="estimateCheatKcal()" style="color:var(--ac);border-color:rgba(230,149,0,0.3)">✨ Estimar con IA</button>';
   html+='<div id="cheat-ai-out"></div>';
   html+='<button class="btn mb-12" onclick="confirmCheat()">Registrar</button>';
-  html+='<button class="btn-out" onclick="renderCheatCal()">📅 Elegir otra fecha</button>';
+  html+='<button class="btn-out mb-12" onclick="renderCheatCal()">📅 Elegir otra fecha</button>';
+  html+='<button class="btn-out" onclick="closeModal()">Cancelar</button>';
   $("modal-content").innerHTML=html;
 }
 
@@ -2296,6 +2297,27 @@ function celebrateDay(){
   }catch(e){}
   try{
     if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  }catch(e){}
+})();
+
+// Back de Android: cierra el modal o vuelve a Hoy en vez de salir de la app
+(function(){
+  try{
+    history.replaceState({app:1},'');
+    history.pushState({app:1},'');
+    window.addEventListener('popstate',()=>{
+      if($('modal').classList.contains('show')){
+        closeModal();
+        history.pushState({app:1},'');
+        return;
+      }
+      const act=document.querySelector('.page.active');
+      if(act&&act.id!=='pg-today'){
+        navTo('pg-today');
+        history.pushState({app:1},'');
+      }
+      // en Hoy sin modal: no re-armamos → el próximo back sale de la app
+    });
   }catch(e){}
 })();
 
