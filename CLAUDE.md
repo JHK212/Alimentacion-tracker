@@ -67,7 +67,7 @@ Field guardado en custom meal: `dish` (nuevo) o `protein` (legacy backward compa
 | `pg-today` | ✓ Hoy | Días auto: lista de comidas default-✓, tocar una abre modal de excepción (volver al plan / alt / otro plato / salteé). Días pre-cutover: UI vieja de checkboxes. Streak en header. |
 | `pg-plans` | 📋 Planes | Detalle de la rutina única (`showPlan()` sin args, renderiza primer scenario no-legacy). Editable. |
 | `pg-cal` | 📅 Calendario | Mes con colores (complete/partial/cheat). Click día → abre en `pg-today`. |
-| `pg-cheat` | 🍕 Cheat | Racha sin cheat, registrar cheat: presets argentinos (`CHEAT_PRESETS`, tap acumula nota+kcal) + kcal libre + botón ✨ Gemini (`estimateCheatKcal`, modelo `gemini-flash-latest`, structured output JSON). Kcal vacío al confirmar → usa promedio histórico (`window._cheatDef`). |
+| `pg-cheat` | 🍕 Cheat | Racha sin cheat, registrar cheat: presets argentinos (`CHEAT_PRESETS`, tap acumula nota+kcal) + kcal libre + botón ✨ Gemini (`estimateCheatKcal` → `geminiEstimate`: cadena de fallback `GEMINI_MODELS` lite-first porque el free tier tira 503 de saturación por-modelo; 403 corta la cadena, otros errores pasan al siguiente). Kcal vacío al confirmar → usa promedio histórico (`window._cheatDef`). |
 | `pg-progress` | 📊 Progreso | Peso + perfil + análisis 4 sem (TDEE, déficit, pérdida real vs esperada) + carga creatina. |
 | `pg-config` | (header gear) | Export/import JSON, borrar días, reset plans. |
 | `pg-del` | (config →) | Multi-select borrar días del historial. |
