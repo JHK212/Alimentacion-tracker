@@ -130,12 +130,6 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
     <div class="logo">PLANES</div>
     <div style="width:44px"></div>
   </div>
-  <div style="display:flex;gap:6px;padding:16px 20px 0;flex-wrap:wrap">
-    <button class="scn-btn active" onclick="showPlan(0,this)" style="flex:1;min-width:45%">🏋️ Tarde</button>
-    <button class="scn-btn" onclick="showPlan(1,this)" style="flex:1;min-width:45%">🌅 Mañana</button>
-    <button class="scn-btn" onclick="showPlan(2,this)" style="flex:1;min-width:45%">😴 Descanso</button>
-    <button class="scn-btn" onclick="showPlan(3,this)" style="flex:1;min-width:45%">⚽ Fútbol</button>
-  </div>
   <div id="plan-content" class="sec"></div>
 </div>
 
@@ -269,40 +263,17 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
 
 <script>
 // ── Scenarios Data ──
+// Rutina única (ago 2026). Tracking por excepción: día sin registro = rutina cumplida.
+// alts = variantes con macros propios, elegibles desde la comida sin pasar por el catálogo.
 const DEFAULT_SCENARIOS = [
-  { id:"tarde", label:"🏋️ Entreno Tarde", short:"Tarde",
+  { id:"rutina", label:"🍽️ Rutina", short:"Rutina",
     meals:[
-      {id:"desayuno",time:"10:00",icon:"🥞🍳",name:"Desayuno Proteico",desc:"2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano",prot:54,carbs:43,fat:27},
-      {id:"almuerzo",time:"13:30",icon:"🌯",name:"Burrito + Arroz",desc:"Carne o pollo + huevo + verdeo + morrón + 1 taza arroz",prot:45,carbs:80,fat:20,flexible:true},
-      {id:"pre",time:"17:00",icon:"🍌",name:"Pre-Entreno",desc:"1 banana — energía rápida para el gym",prot:0,carbs:30,fat:0,training:true,optional:true},
-      {id:"meripost",time:"19:30",icon:"🫐🥤",name:"Post-Entreno + Merienda",desc:"Yogur griego + chía + 1 scoop whey (25g) + arándanos + 1 panqueque",prot:51,carbs:38,fat:15,training:true},
-      {id:"cena",time:"22:00",icon:"🏠",name:"Cena: Lo que haya",desc:"Priorizá proteína. Si es pasta/pizza: porción chica + 2-3 huevos o atún de lata",prot:30,carbs:0,fat:15,zeroCarbos:true,flexible:true},
-    ]
-  },
-  { id:"manana", label:"🌅 Entreno Mañana", short:"Mañana",
-    meals:[
-      {id:"pre",time:"08:30",icon:"🥞🍌",name:"Pre-Entreno",desc:"2 panqueques (con chía en la mezcla) + 1 banana",prot:32,carbs:73,fat:9,training:true},
-      {id:"post",time:"12:00",icon:"🥛🫐",name:"Post-Entreno + Yogur",desc:"Yogur griego (200g) + 1 scoop whey (25g) + arándanos",prot:35,carbs:15,fat:5,training:true},
-      {id:"almuerzo",time:"13:00",icon:"🏠",name:"Almuerzo: Lo que haya + Arroz",desc:"Carne/pollo de la heladera o recalentado + 1 taza arroz. Si no hay proteína: sumá huevos",prot:40,carbs:50,fat:18,flexible:true},
-      {id:"merienda",time:"16:00",icon:"🍳",name:"Merienda pre-Facu",desc:"Opción 1: 4 huevos revueltos + queso + jamón + 1 tostada. Opción 2: Mugcake (whey + huevo + avena + cacao + miel) + banana.",prot:40,carbs:40,fat:22},
-      {id:"cena",time:"21:00",icon:"🍳",name:"Cena Liviana",desc:"2-3 huevos revueltos, o atún de lata, o cottage. Lo que sea rápido y proteico.",prot:25,carbs:2,fat:12,zeroCarbos:true,flexible:true},
-    ]
-  },
-  { id:"descanso", label:"😴 Descanso", short:"Descanso",
-    meals:[
-      {id:"desayuno",time:"10:00",icon:"🥞🍳",name:"Desayuno Proteico",desc:"2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano",prot:54,carbs:43,fat:27},
-      {id:"almuerzo",time:"13:30",icon:"🌯",name:"Burrito + Medio Arroz",desc:"Carne o pollo + huevo + verduras + ½ taza arroz",prot:45,carbs:55,fat:20,flexible:true},
-      {id:"merienda",time:"17:00",icon:"🫐🥞",name:"Merienda Proteica",desc:"Yogur griego + chía + 1 scoop whey (25g) + arándanos + 1 panqueque",prot:47,carbs:38,fat:15},
-      {id:"cena",time:"20:00",icon:"🏠",name:"Cena: Lo que haya",desc:"Priorizá proteína. Evitá solo carbos. Si no hay: 2-3 huevos o atún de lata",prot:30,carbs:0,fat:15,zeroCarbos:true,flexible:true},
-    ]
-  },
-  { id:"futbol", label:"⚽ Fútbol Noche", short:"Fútbol",
-    meals:[
-      {id:"desayuno",time:"10:00",icon:"🥞🍳",name:"Desayuno Proteico",desc:"2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano",prot:54,carbs:43,fat:27},
-      {id:"almuerzo",time:"13:30",icon:"🌯",name:"Burrito + Arroz",desc:"Carne o pollo + huevo + verduras + 1 taza arroz",prot:45,carbs:80,fat:20,flexible:true},
-      {id:"merienda",time:"16:00",icon:"🫐🥞",name:"Merienda Proteica",desc:"Yogur griego + chía + 1 scoop whey (25g) + arándanos + 1 panqueque",prot:47,carbs:38,fat:15},
-      {id:"pre",time:"18:30",icon:"🍌",name:"Pre-Fútbol",desc:"Banana + barrita de cereal o pasas",prot:3,carbs:50,fat:2,training:true},
-      {id:"post",time:"23:00",icon:"🥛",name:"Post-Fútbol",desc:"Yogur griego (150g) + 1 cda miel — liviano, es tarde",prot:18,carbs:18,fat:5,training:true,optional:true},
+      {id:"desayuno",time:"09:30",icon:"🥞",name:"Desayuno",desc:"Panqueque grande (60g mezcla) + yogur griego proteico (150g) + 1 scoop whey",prot:61,carbs:32,fat:9,
+       alts:[{name:"🥞🍳 Panqueque + 3 huevos",prot:40,carbs:23,fat:21}]},
+      {id:"almuerzo",time:"13:30",icon:"🍲",name:"Mealprep",desc:"200g carne picada magra (grasa colada) + 150g papa + verdura",prot:45,carbs:31,fat:15,flexible:true},
+      {id:"merienda",time:"17:30",icon:"🧁",name:"Merienda",desc:"Panqueque chico (40g mezcla) + mugcake proteico (30g harina almendra + 1 scoop whey + 2 huevos)",prot:57,carbs:21,fat:31},
+      {id:"cena",time:"21:30",icon:"🥩",name:"Cena",desc:"200g carne (vaca/pollo/cerdo magro) + ensalada sin aceite",prot:44,carbs:8,fat:12,flexible:true,
+       alts:[{name:"🐟 Atún de lata + ensalada",prot:32,carbs:8,fat:2}]},
     ]
   }
 ];
@@ -311,7 +282,12 @@ let scenarios;
 const CHEAT_INTERVAL = 4;
 const CHEAT_KCAL_BUDGET_DEFAULT = 1500;
 
-const PLANS_REV = 5;
+// Desde acá rige tracking por excepción: un día sin registro cuenta como rutina cumplida.
+const AUTO_START = '2026-08-24';
+function isAutoDay(d){return d>=AUTO_START;}
+function rutinaScn(){return scenarios.find(s=>!s.legacy)||scenarios[0];}
+
+const PLANS_REV = 6;
 const PLAN_PATCHES = {
   1: [
     {scn:'tarde', meal:'desayuno', desc:'2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano + 5g creatina'},
@@ -391,6 +367,7 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;',
 function isMealDone(val){return val===true||(val&&typeof val==='object'&&val.custom);}
 function isFlexible(m){return m.flexible||m.id==='almuerzo'||m.id==='cena';}
 function customMealLabel(v){
+  if(v.name) return v.name;
   const dishId=v.dish||v.protein;
   const p=DISHES.find(x=>x.id===dishId)||LEGACY_PROTEINS.find(x=>x.id===dishId);
   const s=SIDES.find(x=>x.id===v.side)||LEGACY_SIDES.find(x=>x.id===v.side);
@@ -420,7 +397,13 @@ function mealTags(m){
 function dayKcal(dateStr){
   let kcal=0;
   const log=mealLog[dateStr];
-  if(log&&log.scenario){
+  if(isAutoDay(dateStr)){
+    if(dateStr<=td()) rutinaScn().meals.forEach(m=>{
+      const v=log&&log.meals?log.meals[m.id]:undefined;
+      if(v==='skipped') return;
+      kcal+=mealKcal(v&&v.custom?v:m);
+    });
+  } else if(log&&log.scenario){
     const scn=scenarios.find(s=>s.id===log.scenario);
     if(scn) scn.meals.forEach(m=>{const v=log.meals[m.id];if(isMealDone(v)) kcal+=mealKcal(v&&v.custom?v:m);});
   }
@@ -432,7 +415,14 @@ function dayKcal(dateStr){
 function dayMacros(dateStr){
   let p=0,c=0,f=0;
   const log=mealLog[dateStr];
-  if(log&&log.scenario){
+  if(isAutoDay(dateStr)){
+    if(dateStr<=td()) rutinaScn().meals.forEach(m=>{
+      const v=log&&log.meals?log.meals[m.id]:undefined;
+      if(v==='skipped') return;
+      const src=(v&&v.custom)?v:m;
+      p+=src.prot||0; c+=src.carbs||0; f+=src.fat||0;
+    });
+  } else if(log&&log.scenario){
     const scn=scenarios.find(s=>s.id===log.scenario);
     if(scn) scn.meals.forEach(m=>{
       const v=log.meals[m.id];
@@ -486,6 +476,11 @@ function applyPlansMigration(){
       });
     });
   }
+  // rev 6: rutina única al frente; los escenarios viejos quedan legacy para que el historial siga leyéndose
+  if(!scenarios.some(s=>s.id==='rutina')){
+    scenarios.forEach(s=>s.legacy=true);
+    scenarios.unshift(JSON.parse(JSON.stringify(DEFAULT_SCENARIOS[0])));
+  }
   savePlans();
   save("food-plans-rev",PLANS_REV);
 }
@@ -501,7 +496,8 @@ function resetPlans(){
 }
 
 function doResetPlans(){
-  scenarios=JSON.parse(JSON.stringify(DEFAULT_SCENARIOS));
+  const legacy=scenarios.filter(s=>s.legacy);
+  scenarios=[...JSON.parse(JSON.stringify(DEFAULT_SCENARIOS)),...legacy];
   savePlans();closeModal();navTo('pg-today');
 }
 
@@ -515,6 +511,7 @@ function navTo(id){
   });
   window.scrollTo(0,0);
   if(id==='pg-today'){activeDate=td();renderToday();}
+  if(id==='pg-plans') showPlan();
   if(id==='pg-cal') renderCal();
   if(id==='pg-cheat') renderCheat();
   if(id==='pg-del') renderDelDays();
@@ -542,7 +539,8 @@ function openDay(dateStr){
 
 // ── Day Log ──
 function getDayLog(dateStr){
-  if(!mealLog[dateStr]) mealLog[dateStr]={scenario:null,meals:{}};
+  if(!mealLog[dateStr]) mealLog[dateStr]={scenario:isAutoDay(dateStr)?'rutina':null,meals:{}};
+  if(isAutoDay(dateStr)&&!mealLog[dateStr].scenario) mealLog[dateStr].scenario='rutina';
   return mealLog[dateStr];
 }
 
@@ -703,9 +701,10 @@ function changeScenario(){
 
 function renderToday(){
   updateStreak();
-  const log=getDayLog(activeDate);
   const isToday=activeDate===td();
   $("today-date").textContent=isToday?fdLong(activeDate):'📅 '+fdLong(activeDate);
+  if(isAutoDay(activeDate)){renderAutoDay();return;}
+  const log=getDayLog(activeDate);
 
   // No scenario selected → show selector
   if(!log.scenario){
@@ -911,10 +910,156 @@ function renderToday(){
   $("today-content").innerHTML=html;
 }
 
+// ── Hoy (tracking por excepción) ──
+function renderAutoDay(){
+  const log=mealLog[activeDate]; // lectura: no crear entrada hasta que haya excepción
+  const isToday=activeDate===td();
+  const scn=rutinaScn();
+  const totalMacros=scnMacros(scn);
+  const kcalDay=dayKcal(activeDate);
+  const skips=scn.meals.filter(m=>log&&log.meals&&log.meals[m.id]==='skipped').length;
+  const ok=skips===0;
+
+  let html='<div class="sec">';
+
+  const _weighedToday=load('food-weight',[]).some(w=>w.date===td());
+  const _morningWeigh=isToday&&!_weighedToday&&new Date(Date.now()-3*3600*1000).getUTCHours()<12;
+  if(_morningWeigh){
+    html+=`<div class="card" style="cursor:default;border-color:var(--ac);background:rgba(230,149,0,0.06);margin-bottom:14px">
+      <div class="row">
+        <div style="flex:1"><div class="fw-700" style="font-size:15px">⚖️ Pesate en ayunas</div><div class="text-xs text-mt mt-4" style="line-height:1.4">Antes de desayunar, recién levantado. Es el dato más confiable.</div></div>
+        <button class="btn-out" onclick="openWeightModal()" style="width:auto;padding:8px 14px;font-size:13px;white-space:nowrap;border-color:var(--ac);color:var(--ac)">Registrar</button>
+      </div>
+    </div>`;
+  }
+
+  html+=`<div class="card" style="cursor:default;border-color:${ok?'rgba(34,197,94,0.3)':'rgba(234,179,8,0.3)'}">
+    <div class="row mb-4">
+      <span class="text-sm fw-700">${scn.label} ${ok?'<span style="color:var(--gn)">· cumplida</span>':'<span style="color:var(--yw)">· '+skips+' salteada'+(skips>1?'s':'')+'</span>'}</span>
+      <span class="mono fw-800" style="color:${ok?'var(--gn)':'var(--yw)'}">${kcalDay} kcal</span>
+    </div>
+    <div class="text-xs text-mt" style="line-height:1.4">Sin registrar nada = rutina cumplida. Tocá una comida solo si algo cambió.</div>
+  </div>`;
+
+  const dm=dayMacros(activeDate);
+  const protColor=dm.p>=totalMacros.p?'var(--gn)':(dm.p>=totalMacros.p*0.9?'var(--yw)':'var(--dn)');
+  html+=`<div class="card" style="cursor:default;margin-top:12px">
+    <div class="text-xs text-mt fw-600 mb-8">MACROS DEL DÍA</div>
+    <div class="row mb-4"><span class="text-sm fw-700">Proteína</span><span class="mono fw-800" style="color:${protColor}">${dm.p} / ${totalMacros.p}g</span></div>
+    <div class="row text-xs text-mt"><span>Carbos</span><span class="mono">${dm.c} / ${totalMacros.c}g</span></div>
+    <div class="row text-xs text-mt"><span>Grasas</span><span class="mono">${dm.f} / ${totalMacros.f}g</span></div>
+  </div>`;
+
+  const _cre=log?log.creatine:undefined;
+  html+=`<div class="card" style="cursor:default;margin-top:12px">
+    <div class="row">
+      <div class="fw-700" style="font-size:15px">🧪 Creatina ${_cre===true?'<span style="color:var(--gn)">· tomada</span>':_cre===false?'<span style="color:var(--dn)">· no</span>':''}</div>
+      <div class="flex gap-8">
+        <button class="btn-out" onclick="setCreatine(true)" style="width:auto;padding:8px 16px;font-size:15px;${_cre===true?'border-color:var(--gn);color:var(--gn);background:rgba(34,197,94,0.08)':''}">✓</button>
+        <button class="btn-out" onclick="setCreatine(false)" style="width:auto;padding:8px 16px;font-size:15px;${_cre===false?'border-color:var(--dn);color:var(--dn);background:rgba(239,68,68,0.08)':''}">✗</button>
+      </div>
+    </div>
+  </div>`;
+
+  html+='<div class="text-xs text-mt fw-600 mb-8 mt-20" style="text-transform:uppercase;letter-spacing:1.5px">Comidas</div>';
+  scn.meals.forEach(m=>{
+    const v=log&&log.meals?log.meals[m.id]:undefined;
+    let icon='✓', color='var(--gn)', label=esc(m.icon)+' '+esc(m.name), sub=esc(m.desc), kcal=mealKcal(m), nameStyle='';
+    if(v==='skipped'){icon='✕';color='var(--dn)';nameStyle='text-decoration:line-through;color:var(--dn)';sub='No la comiste · tocá para volver al plan';kcal=0;}
+    else if(v&&v.custom){icon='🔄';color='var(--ac)';label=esc(customMealLabel(v));sub='Reemplazo de: '+esc(m.name);kcal=mealKcal(v);}
+    html+=`<div class="meal-row${v==='skipped'?'':' done'}" onclick="openMealActions('${m.id}')">
+      <div class="meal-check" style="border-color:${color};color:${color};${v&&v.custom?'background:rgba(230,149,0,0.12);':''}font-size:13px">${icon}</div>
+      <span class="meal-time-tag">${esc(m.time)}</span>
+      <div class="meal-info"><div class="meal-name" style="${nameStyle}">${label}</div><div class="meal-desc">${sub}</div></div>
+      <span class="mono text-xs text-mt">${kcal}</span>
+    </div>`;
+  });
+
+  const _dayCheats=cheatLog.filter(c=>c.date===activeDate);
+  if(_dayCheats.length>0){
+    html+='<div class="text-xs text-mt fw-600 mb-8 mt-20" style="text-transform:uppercase;letter-spacing:1.5px">Cheats del día</div>';
+    _dayCheats.forEach(c=>{
+      const _gi=cheatLog.indexOf(c);
+      html+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)22">
+        <span style="font-size:16px">🍕</span>
+        <span class="text-sm fw-600" style="flex:1">${esc(c.note)}</span>
+        <span class="mono text-xs text-mt">${c.kcal||0} kcal</span>
+        <button class="icon-btn" style="width:28px;height:28px;font-size:11px;color:var(--dn)" onclick="deleteCheat(${_gi})">✕</button>
+      </div>`;
+    });
+  }
+
+  const _todaySnacks=snackLog.filter(s=>s.date===activeDate);
+  if(_todaySnacks.length>0){
+    html+='<div class="text-xs text-mt fw-600 mb-8 mt-20" style="text-transform:uppercase;letter-spacing:1.5px">Snacks extras</div>';
+    _todaySnacks.forEach(s=>{
+      const _gi=snackLog.indexOf(s);
+      html+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)22">
+        <span style="font-size:16px">🍎</span>
+        <span class="text-sm fw-600" style="flex:1">${esc(s.note)}</span>
+        <span class="mono text-xs text-mt">${s.kcal} kcal</span>
+        <button class="icon-btn" style="width:28px;height:28px;font-size:11px;color:var(--dn)" onclick="deleteSnack(${_gi})">✕</button>
+      </div>`;
+    });
+  }
+
+  if(isToday&&!_morningWeigh){
+    const _wts=load('food-weight',[]);
+    const _lastW=_wts.length?[..._wts].sort((a,b)=>b.date.localeCompare(a.date))[0]:null;
+    const _daysW=_lastW?Math.floor((new Date(td()+'T12:00:00Z')-new Date(_lastW.date+'T12:00:00Z'))/86400000):999;
+    if(_daysW>=7) html+='<div style="margin-top:16px;padding:12px 14px;border-radius:12px;border:1px solid var(--yw);background:rgba(234,179,8,0.08);display:flex;align-items:center;justify-content:space-between;gap:10px"><span class="text-xs" style="color:var(--mt)">'+(_daysW<999?'Hace '+_daysW+' días sin pesarte':'Registrá tu peso para activar el análisis')+'</span><button class="btn-out" onclick="navTo(\'pg-progress\')" style="font-size:12px;padding:6px 12px;white-space:nowrap;border-color:var(--yw);color:var(--yw)">Registrar</button></div>';
+  }
+
+  html+=`<div class="flex gap-8 mt-20">
+    <button class="btn-out" onclick="openSnackModal()" style="font-size:13px">🍎 + Snack</button>
+    <button class="btn-out" onclick="logCheat()" style="font-size:13px;color:var(--dn);border-color:rgba(239,68,68,0.3)">🍕 + Cheat</button>
+  </div>`;
+  if(!isToday) html+=`<button class="btn mt-12" onclick="navTo('pg-today')">← Volver a hoy</button>`;
+
+  html+='</div>';
+  $("today-content").innerHTML=html;
+}
+
+function openMealActions(mealId){
+  const m=rutinaScn().meals.find(x=>x.id===mealId);
+  if(!m) return;
+  const log=mealLog[activeDate];
+  const v=log&&log.meals?log.meals[mealId]:undefined;
+  let html=`<div style="font-size:18px;font-weight:800;margin-bottom:4px">${esc(m.icon)} ${esc(m.name)}</div>`;
+  html+=`<div class="text-sm text-mt mb-18" style="line-height:1.5">${esc(m.desc)} · <span class="mono">${mealKcal(m)} kcal</span></div>`;
+  if(v!==undefined) html+=`<button class="btn mb-12" onclick="resetMeal('${m.id}')">✓ Volver al plan</button>`;
+  (m.alts||[]).forEach((a,i)=>{
+    html+=`<button class="btn-out mb-12" onclick="pickAlt('${m.id}',${i})" style="color:var(--ac);border-color:rgba(230,149,0,0.3)">🔄 ${esc(a.name)} · <span class="mono">${mealKcal(a)} kcal</span></button>`;
+  });
+  if(isFlexible(m)) html+=`<button class="btn-out mb-12" onclick="openCustomMeal('${m.id}')">🍽️ Comí otro plato</button>`;
+  if(v!=='skipped') html+=`<button class="btn-out mb-12" onclick="skipMeal('${m.id}');closeModal()" style="color:var(--dn);border-color:rgba(239,68,68,0.3)">✕ No la comí</button>`;
+  html+=`<button class="btn-out" onclick="closeModal()">Cancelar</button>`;
+  $("modal-content").innerHTML=html;
+  $("modal").classList.add("show");
+}
+
+function resetMeal(mealId){
+  const log=getDayLog(activeDate);
+  delete log.meals[mealId];
+  save("food-log",mealLog);
+  closeModal();
+  renderToday();
+}
+
+function pickAlt(mealId,altIdx){
+  const m=rutinaScn().meals.find(x=>x.id===mealId);
+  const a=m&&m.alts?m.alts[altIdx]:null;
+  if(!a) return;
+  const log=getDayLog(activeDate);
+  log.meals[mealId]={custom:true,name:a.name,prot:a.prot||0,carbs:a.carbs||0,fat:a.fat||0};
+  save("food-log",mealLog);
+  closeModal();
+  renderToday();
+}
+
 // ── Plans (detailed view) ──
-function showPlan(idx, btnEl){
-  document.querySelectorAll('#pg-plans .scn-btn').forEach(b=>b.classList.remove('active'));
-  if(btnEl) btnEl.classList.add('active');
+function showPlan(){
+  const idx=Math.max(0,scenarios.findIndex(s=>!s.legacy));
   const scn=scenarios[idx];
   const m=scnMacros(scn);
   let html=`<div class="row mb-6"><div style="font-size:20px;font-weight:800">${scn.label}</div><button class="icon-btn" style="width:32px;height:32px;font-size:13px" onclick="editPlan(${idx})">✎</button></div>`;
@@ -996,6 +1141,12 @@ function deleteMealFromPlan(){
 function getDayStatus(dateStr){
   const log=mealLog[dateStr];
   const isCheat=cheatLog.some(c=>c.date===dateStr);
+  if(isAutoDay(dateStr)){
+    if(dateStr>td()) return null;
+    const skipped=rutinaScn().meals.some(m=>log&&log.meals&&log.meals[m.id]==='skipped');
+    const st=skipped?'partial':'complete';
+    return isCheat?st+'-cheat':st;
+  }
   let mealStatus=null;
   if(log&&log.scenario){
     const scn=scenarios.find(s=>s.id===log.scenario);
@@ -1125,6 +1276,7 @@ function confirmCheat(){
   const budget=cheatKcalBudget();
   closeModal();
   renderCheat();
+  if($('pg-today').classList.contains('active')) renderToday();
   if(wkKcal>budget) alert(`⚠ Vas ${wkKcal} kcal en cheats esta semana (presupuesto ${budget}). Tu peso lo va a notar.`);
 }
 
@@ -1132,6 +1284,7 @@ function deleteCheat(idx){
   cheatLog.splice(idx,1);
   save("food-cheat",cheatLog);
   renderCheat();
+  if($('pg-today').classList.contains('active')) renderToday();
 }
 
 function renderCheat(){
@@ -1338,6 +1491,13 @@ function renderAdherenceCard(){
   const stats={};
   scenarios.forEach(scn=>{stats[scn.id]={label:scn.label,used:0,complete:0};});
   dates.forEach(d=>{
+    if(isAutoDay(d)){
+      const st=stats[rutinaScn().id];
+      if(!st) return;
+      st.used++;
+      if(isDayComplete(d)) st.complete++;
+      return;
+    }
     const log=mealLog[d];
     if(!log||!log.scenario||!stats[log.scenario]) return;
     const scn=scenarios.find(s=>s.id===log.scenario);
@@ -1607,12 +1767,24 @@ function analyzeWindow(daysBack){
     dates.push(cursor.toISOString().slice(0,10));
     cursor.setUTCDate(cursor.getUTCDate()-1);
   }
-  const loggedDays=dates.filter(d=>mealLog[d]&&mealLog[d].scenario);
-  let planKcal=0;
-  loggedDays.forEach(d=>{
+  let planKcal=0, loggedCount=0;
+  dates.forEach(d=>{
+    if(isAutoDay(d)){
+      // día auto: siempre cuenta; consumo = rutina menos salteos, con reemplazos
+      loggedCount++;
+      const log=mealLog[d];
+      rutinaScn().meals.forEach(m=>{
+        const v=log&&log.meals?log.meals[m.id]:undefined;
+        if(v==='skipped') return;
+        planKcal+=mealKcal(v&&v.custom?v:m);
+      });
+      return;
+    }
     const log=mealLog[d];
+    if(!log||!log.scenario) return;
     const scn=scenarios.find(s=>s.id===log.scenario);
     if(!scn) return;
+    loggedCount++;
     scn.meals.forEach(m=>{
       const v=log.meals[m.id];
       if(isMealDone(v)) planKcal+=mealKcal(v&&v.custom?v:m);
@@ -1622,7 +1794,7 @@ function analyzeWindow(daysBack){
   const cheatKcal=cheats.reduce((s,c)=>s+(c.kcal||0),0);
   const snacks=snackLog.filter(s=>dates.includes(s.date));
   const snackKcal=snacks.reduce((s,n)=>s+(n.kcal||0),0);
-  const planAvg=loggedDays.length>0?planKcal/loggedDays.length:0;
+  const planAvg=loggedCount>0?planKcal/loggedCount:0;
   const cheatAvg=cheatKcal/daysBack;
   const snackAvg=snackKcal/daysBack;
   const avgConsumed=planAvg+cheatAvg+snackAvg;
@@ -1638,8 +1810,8 @@ function analyzeWindow(daysBack){
     if(avgConsumed>0) adjustedTDEE=Math.round(avgConsumed+(realKgLoss*7700/daysBack));
   }
   return {
-    daysTotal:daysBack, daysLogged:loggedDays.length,
-    completeness:loggedDays.length/daysBack,
+    daysTotal:daysBack, daysLogged:loggedCount,
+    completeness:loggedCount/daysBack,
     avgConsumed, planAvg, cheatAvg, cheatCount:cheats.length,
     snackAvg, snackCount:snacks.length,
     tdee, deficit, expectedKgLoss, realKgLoss, adjustedTDEE,
@@ -1917,6 +2089,9 @@ function saveWeight(){
 // ── Streak & Celebrate ──
 function isDayComplete(dateStr){
   const log=mealLog[dateStr];
+  if(isAutoDay(dateStr)){
+    return dateStr<=td()&&!rutinaScn().meals.some(m=>log&&log.meals&&log.meals[m.id]==='skipped');
+  }
   if(!log||!log.scenario) return false;
   const scn=scenarios.find(s=>s.id===log.scenario);
   if(!scn) return false;
@@ -2019,7 +2194,7 @@ function celebrateDay(){
 
 // ── Init ──
 init();
-showPlan(0);
+showPlan();
 </script>
 </body>
 </html>
