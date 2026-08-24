@@ -276,7 +276,7 @@ const DEFAULT_SCENARIOS = [
     meals:[
       {id:"desayuno",time:"09:30",icon:"🥞",name:"Desayuno",desc:"Panqueque grande (60g mezcla) + yogur griego proteico (150g) + 1 scoop whey",prot:61,carbs:32,fat:9,
        alts:[{name:"🥞🍳 Panqueque + 3 huevos",prot:40,carbs:23,fat:21}]},
-      {id:"almuerzo",time:"13:30",icon:"🍲",name:"Mealprep",desc:"200g carne picada magra (grasa colada) + 150g papa + verdura",prot:45,carbs:31,fat:15,flexible:true},
+      {id:"almuerzo",time:"13:30",icon:"🍲",name:"Mealprep",desc:"230-240g picada magra cruda (grasa colada) + 200g papa/batata + verdura",prot:53,carbs:42,fat:17,flexible:true},
       {id:"merienda",time:"17:30",icon:"🧁",name:"Merienda",desc:"Mugcake proteico (30g harina almendra + 1 scoop whey + 2 huevos)",prot:42,carbs:6,fat:27,
        alts:[{name:"🥞 Panqueque chico + yogur + scoop",prot:54,carbs:25,fat:7}]},
       {id:"cena",time:"21:30",icon:"🥩",name:"Cena",desc:"200g carne (vaca/pollo/cerdo magro) + ensalada sin aceite",prot:44,carbs:8,fat:12,flexible:true,
@@ -294,7 +294,7 @@ const AUTO_START = '2026-08-24';
 function isAutoDay(d){return d>=AUTO_START;}
 function rutinaScn(){return scenarios.find(s=>!s.legacy)||scenarios[0];}
 
-const PLANS_REV = 7;
+const PLANS_REV = 8;
 const PLAN_PATCHES = {
   1: [
     {scn:'tarde', meal:'desayuno', desc:'2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano + 5g creatina'},
@@ -329,6 +329,10 @@ const PLAN_PATCHES = {
   7: [
     {scn:'rutina', meal:'merienda', desc:'Mugcake proteico (30g harina almendra + 1 scoop whey + 2 huevos)', prot:42, carbs:6, fat:27,
      alts:[{name:'🥞 Panqueque chico + yogur + scoop', prot:54, carbs:25, fat:7}]},
+  ],
+  // porciones reales del mealprep: 230-240g picada + 200g papa/batata
+  8: [
+    {scn:'rutina', meal:'almuerzo', desc:'230-240g picada magra cruda (grasa colada) + 200g papa/batata + verdura', prot:53, carbs:42, fat:17},
   ],
 };
 
