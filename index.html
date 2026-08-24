@@ -128,9 +128,25 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
 <div id="pg-plans" class="page">
   <div class="header">
     <div class="logo">PLANES</div>
-    <div style="width:44px"></div>
+    <button class="icon-btn" onclick="navTo('pg-recipes')">📖</button>
   </div>
   <div id="plan-content" class="sec"></div>
+</div>
+
+<!-- ══ RECETAS ══ -->
+<div id="pg-recipes" class="page">
+  <div class="header">
+    <button class="icon-btn" onclick="navTo('pg-plans')">←</button>
+    <div class="fw-700" style="font-size:16px;text-align:center;flex:1">📖 Mis Recetas</div>
+    <div style="width:44px"></div>
+  </div>
+  <div class="sec">
+    <label class="btn" style="display:block;text-align:center;cursor:pointer;margin-bottom:12px">📷 Importar de screenshot
+      <input type="file" accept="image/*" onchange="importRecipePhoto(event)" style="display:none">
+    </label>
+    <button class="btn-out mb-12" onclick="openRecipeForm(null)">✏️ Crear a mano</button>
+    <div id="recipes-list" class="mt-8"></div>
+  </div>
 </div>
 
 <!-- ══ CALENDARIO ══ -->
@@ -467,7 +483,7 @@ function dayMacros(dateStr){
 }
 
 // ── State ──
-let mealLog, cheatLog, snackLog, checkinLog, photoLog, calY, calM, activeDate, selectedDelDays=new Set();
+let mealLog, cheatLog, snackLog, checkinLog, photoLog, recipeLog, calY, calM, activeDate, selectedDelDays=new Set();
 function load(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}}
 function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 function td(){const d=new Date(Date.now()-3*3600*1000);return d.toISOString().slice(0,10);}
@@ -488,6 +504,7 @@ function init(){
   snackLog=load("food-snacks",[]);
   checkinLog=load("food-checkin",[]);
   photoLog=load("food-photo",[]);
+  recipeLog=load("food-recipes",[]);
   activeDate=td();
   const n=new Date();calY=n.getFullYear();calM=n.getMonth();
   renderToday();
@@ -544,6 +561,7 @@ function navTo(id){
   window.scrollTo(0,0);
   if(id==='pg-today'){activeDate=td();renderToday();}
   if(id==='pg-plans') showPlan();
+  if(id==='pg-recipes') renderRecipes();
   if(id==='pg-cal') renderCal();
   if(id==='pg-cheat') renderCheat();
   if(id==='pg-del') renderDelDays();
@@ -655,7 +673,21 @@ function renderCustomStep1(){
   const _sorted=[...DISHES].sort((a,b)=>(_usage[b.id]||0)-(_usage[a.id]||0));
   let html='<div style="font-size:18px;font-weight:800;margin-bottom:4px">¿Qué plato?</div>';
   html+='<div class="text-sm text-mt mb-18">Elegí una opción</div>';
-  html+='<div style="max-height:60vh;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-right:4px">';
+  html+='<div style="max-height:60vh;overflow-y:auto;padding-right:4px">';
+  if(recipeLog.length){
+    html+='<div class="label" style="margin-bottom:8px">📖 MIS RECETAS · 1 porción</div>';
+    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">';
+    recipeLog.forEach(r=>{
+      html+=`<button onclick="pickRecipeDish('${r.id}')" style="background:var(--cd);border:1.5px solid rgba(230,149,0,0.3);border-radius:14px;padding:14px 8px;cursor:pointer;text-align:center;color:var(--tx)">
+        <div style="font-size:24px;margin-bottom:4px">${esc(r.emoji||'📖')}</div>
+        <div class="fw-700" style="font-size:12px;line-height:1.3">${esc(r.name)}</div>
+        <div class="text-xs text-mt mt-4 mono">${r.prot||0}p · ${mealKcal(r)} kcal</div>
+      </button>`;
+    });
+    html+='</div>';
+    html+='<div class="label" style="margin-bottom:8px">CATÁLOGO</div>';
+  }
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
   _sorted.forEach(d=>{
     html+=`<button onclick="pickDish('${d.id}')" style="background:var(--cd);border:1.5px solid var(--bd);border-radius:14px;padding:14px 8px;cursor:pointer;text-align:center;color:var(--tx)">
       <div style="font-size:24px;margin-bottom:4px">${d.emoji}</div>
@@ -663,7 +695,7 @@ function renderCustomStep1(){
       <div class="text-xs text-mt mt-4 mono">${d.prot}p · ${mealKcal(d)} kcal</div>
     </button>`;
   });
-  html+='</div>';
+  html+='</div></div>';
   html+='<button class="btn-out mt-20" onclick="closeModal()">Cancelar</button>';
   $("modal-content").innerHTML=html;
 }
@@ -1325,7 +1357,9 @@ function addCheatPreset(i){
 const GEMINI_MODELS=['gemini-flash-lite-latest','gemini-flash-latest','gemini-2.5-flash-lite','gemini-2.5-flash'];
 function geminiKey(){return (load('food-cfg',{}).geminiKey||'').trim();}
 
-async function geminiEstimate(note,key){
+async function geminiCall(parts,schema,validate){
+  const key=geminiKey();
+  if(!key) throw new Error('sin API key (Config)');
   let lastErr='';
   for(const model of GEMINI_MODELS){
     try{
@@ -1333,18 +1367,15 @@ async function geminiEstimate(note,key){
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
-          contents:[{parts:[{text:'Estimá las calorías totales de esta comida, con porciones típicas de Argentina. Si algo es ambiguo, asumí la porción estándar. Comida: "'+note+'"'}]}],
-          generationConfig:{
-            responseMimeType:'application/json',
-            responseSchema:{type:'OBJECT',properties:{kcal:{type:'INTEGER'},detalle:{type:'STRING',description:'desglose muy breve por ítem, en español'}},required:['kcal','detalle']}
-          }
+          contents:[{parts:parts}],
+          generationConfig:{responseMimeType:'application/json',responseSchema:schema}
         })
       });
       if(r.status===403){throw {fatal:true,msg:'key inválida o sin permisos (403)'};}
       if(!r.ok){lastErr='HTTP '+r.status;continue;}
       const data=await r.json();
       const out=JSON.parse(data.candidates[0].content.parts[0].text);
-      if(out&&isFinite(out.kcal)) return out;
+      if(out&&(!validate||validate(out))) return out;
       lastErr='respuesta inválida';
     }catch(e){
       if(e.fatal) throw new Error(e.msg);
@@ -1355,6 +1386,14 @@ async function geminiEstimate(note,key){
   throw new Error(lastErr||'sin respuesta');
 }
 
+function geminiEstimate(note){
+  return geminiCall(
+    [{text:'Estimá las calorías totales de esta comida, con porciones típicas de Argentina. Si algo es ambiguo, asumí la porción estándar. Comida: "'+note+'"'}],
+    {type:'OBJECT',properties:{kcal:{type:'INTEGER'},detalle:{type:'STRING',description:'desglose muy breve por ítem, en español'}},required:['kcal','detalle']},
+    out=>isFinite(out.kcal)
+  );
+}
+
 async function estimateCheatKcal(){
   const note=$("cheat-input").value.trim();
   if(!note){alert('Escribí qué comiste primero');return;}
@@ -1363,7 +1402,7 @@ async function estimateCheatKcal(){
   const btn=$("cheat-ai-btn");
   btn.disabled=true;btn.textContent='✨ Estimando…';
   try{
-    const out=await geminiEstimate(note,key);
+    const out=await geminiEstimate(note);
     $("cheat-kcal").value=Math.round(out.kcal);
     $("cheat-ai-out").innerHTML=`<div class="text-xs mb-12" style="color:var(--ac);line-height:1.5">✨ ~${Math.round(out.kcal)} kcal · ${esc(out.detalle)}</div>`;
   }catch(e){
@@ -1376,6 +1415,157 @@ function saveGeminiKey(){
   const cfg=load('food-cfg',{});
   cfg.geminiKey=$('cfg-gemini-key').value.trim();
   save('food-cfg',cfg);
+}
+
+// ── Recetas ──
+// {id, name, emoji, servings, prot, carbs, fat (por porción), ingredients:[str], steps:[str]}
+function saveRecipes(){save('food-recipes',recipeLog);}
+
+function renderRecipes(){
+  const el=$('recipes-list');
+  if(!recipeLog.length){
+    el.innerHTML='<div class="text-sm text-mt" style="text-align:center;padding:20px 0;line-height:1.6">Sin recetas todavía.<br>Subí un screenshot de una receta y Gemini la traduce, arma ingredientes, pasos y macros por porción.</div>';
+    return;
+  }
+  el.innerHTML=recipeLog.map(r=>`
+    <div class="card" onclick="viewRecipe('${r.id}')" style="cursor:pointer">
+      <div class="row">
+        <div style="flex:1">
+          <div class="fw-700" style="font-size:15px">${esc(r.emoji||'📖')} ${esc(r.name)}</div>
+          <div class="text-xs text-mt mt-4 mono">${r.prot||0}p · ${r.carbs||0}c · ${r.fat||0}f · ${mealKcal(r)} kcal/porción${r.servings?` · rinde ${r.servings}`:''}</div>
+        </div>
+        <div style="color:var(--mt)">→</div>
+      </div>
+    </div>`).join('');
+}
+
+function viewRecipe(id){
+  const r=recipeLog.find(x=>x.id===id);
+  if(!r) return;
+  let html=`<div style="font-size:18px;font-weight:800;margin-bottom:4px">${esc(r.emoji||'📖')} ${esc(r.name)}</div>`;
+  html+=`<div class="text-xs text-mt mono mb-12">${r.prot||0}p · ${r.carbs||0}c · ${r.fat||0}f · ${mealKcal(r)} kcal por porción${r.servings?` · rinde ${r.servings} porciones`:''}</div>`;
+  html+='<div style="max-height:50vh;overflow-y:auto;padding-right:4px">';
+  if(r.ingredients&&r.ingredients.length){
+    html+='<div class="label" style="margin-top:8px">INGREDIENTES</div>';
+    html+='<div class="text-sm" style="line-height:1.7;color:#a0a0b0">'+r.ingredients.map(i=>'· '+esc(i)).join('<br>')+'</div>';
+  }
+  if(r.steps&&r.steps.length){
+    html+='<div class="label" style="margin-top:14px">PASO A PASO</div>';
+    html+='<div class="text-sm" style="line-height:1.7;color:#a0a0b0">'+r.steps.map((s,i)=>`<strong style="color:var(--ac)">${i+1}.</strong> ${esc(s)}`).join('<br>')+'</div>';
+  }
+  html+='</div>';
+  html+=`<button class="btn-out mt-20 mb-12" onclick="openRecipeForm('${r.id}')">✏️ Editar</button>`;
+  html+=`<button class="btn-out mb-12 danger" onclick="deleteRecipe('${r.id}')">Eliminar</button>`;
+  html+='<button class="btn-out" onclick="closeModal()">Cerrar</button>';
+  $('modal-content').innerHTML=html;
+  $('modal').classList.add('show');
+}
+
+function deleteRecipe(id){
+  if(!confirm('¿Eliminar esta receta?')) return;
+  const idx=recipeLog.findIndex(x=>x.id===id);
+  if(idx>=0) recipeLog.splice(idx,1);
+  saveRecipes();closeModal();renderRecipes();
+}
+
+function openRecipeForm(id,draft){
+  const r=draft||(id?recipeLog.find(x=>x.id===id):null)||{};
+  window._recipeEditId=id||null;
+  const inp='background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;font-size:16px;color:var(--tx);width:100%;box-sizing:border-box;outline:none';
+  const inpM=inp+';font-family:var(--fm);font-weight:700;text-align:center';
+  let html=`<div style="font-size:18px;font-weight:800;margin-bottom:16px">${id?'Editar':'Nueva'} receta${draft?' <span class="text-xs" style="color:var(--ac)">· leída del screenshot, revisá cantidades</span>':''}</div>`;
+  html+='<div style="max-height:55vh;overflow-y:auto;padding-right:4px">';
+  html+=`<div class="flex gap-8 mb-12"><div class="flex-1" style="flex:3"><label class="label">NOMBRE</label><input id="rc-name" value="${esc(r.name||'')}" style="${inp}"></div><div class="flex-1"><label class="label">EMOJI</label><input id="rc-emoji" value="${esc(r.emoji||'🍲')}" style="${inp};text-align:center"></div></div>`;
+  html+=`<div class="flex gap-8 mb-12"><div class="flex-1"><label class="label">RINDE (porciones)</label><input id="rc-serv" type="number" inputmode="numeric" value="${r.servings||4}" style="${inpM}"></div></div>`;
+  html+=`<div class="label">MACROS POR PORCIÓN (g)</div>`;
+  html+=`<div class="flex gap-8 mb-12"><div class="flex-1"><label class="label">PROT</label><input id="rc-prot" type="number" value="${r.prot||0}" style="${inpM}"></div><div class="flex-1"><label class="label">CARBS</label><input id="rc-carbs" type="number" value="${r.carbs||0}" style="${inpM}"></div><div class="flex-1"><label class="label">GRASAS</label><input id="rc-fat" type="number" value="${r.fat||0}" style="${inpM}"></div></div>`;
+  html+=`<div class="mb-12"><label class="label">INGREDIENTES (uno por línea, con cantidad)</label><textarea id="rc-ing" style="${inp};resize:vertical;min-height:90px;font-size:14px">${esc((r.ingredients||[]).join('\n'))}</textarea></div>`;
+  html+=`<div class="mb-12"><label class="label">PASO A PASO (uno por línea)</label><textarea id="rc-steps" style="${inp};resize:vertical;min-height:90px;font-size:14px">${esc((r.steps||[]).join('\n'))}</textarea></div>`;
+  html+='</div>';
+  html+='<button class="btn mt-12 mb-12" onclick="saveRecipeForm()">Guardar</button>';
+  html+='<button class="btn-out" onclick="closeModal()">Cancelar</button>';
+  $('modal-content').innerHTML=html;
+  $('modal').classList.add('show');
+}
+
+function saveRecipeForm(){
+  const name=$('rc-name').value.trim();
+  if(!name){alert('Poné un nombre');return;}
+  const rec={
+    id:window._recipeEditId||uid(),
+    name,
+    emoji:$('rc-emoji').value.trim()||'🍲',
+    servings:parseInt($('rc-serv').value)||0,
+    prot:parseInt($('rc-prot').value)||0,
+    carbs:parseInt($('rc-carbs').value)||0,
+    fat:parseInt($('rc-fat').value)||0,
+    ingredients:$('rc-ing').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    steps:$('rc-steps').value.split('\n').map(s=>s.trim()).filter(Boolean),
+  };
+  const idx=recipeLog.findIndex(x=>x.id===rec.id);
+  if(idx>=0) recipeLog[idx]=rec;
+  else recipeLog.push(rec);
+  saveRecipes();closeModal();renderRecipes();
+}
+
+function recipeImgPart(file){
+  return new Promise((res,rej)=>{
+    const img=new Image();
+    const url=URL.createObjectURL(file);
+    img.onload=()=>{
+      try{
+        const max=1280;
+        const s=Math.min(1,max/Math.max(img.width,img.height));
+        const c=document.createElement('canvas');
+        c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);
+        c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+        URL.revokeObjectURL(url);
+        res({inline_data:{mime_type:'image/jpeg',data:c.toDataURL('image/jpeg',0.82).split(',')[1]}});
+      }catch(e){rej(e);}
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('no pude leer la imagen'));};
+    img.src=url;
+  });
+}
+
+async function importRecipePhoto(event){
+  const file=event.target.files[0];
+  event.target.value='';
+  if(!file) return;
+  if(!geminiKey()){alert('Cargá tu Gemini API key en Config (⚙) para importar screenshots');return;}
+  $('modal-content').innerHTML='<div style="text-align:center;padding:30px 0"><div style="font-size:40px;margin-bottom:12px">📷✨</div><div class="fw-700">Leyendo la receta…</div><div class="text-xs text-mt mt-8">Traduce, estructura y calcula macros por porción</div></div>';
+  $('modal').classList.add('show');
+  try{
+    const imgPart=await recipeImgPart(file);
+    const out=await geminiCall(
+      [imgPart,{text:'La imagen es una receta de cocina (puede estar en cualquier idioma). Traducila al español rioplatense y estructurala. Calculá los macros POR PORCIÓN en gramos a partir de los ingredientes; si la receta no dice cuántas porciones rinde, estimalo razonablemente para mealprep. Ingredientes con cantidades exactas (gramos/unidades). Pasos concisos.'}],
+      {type:'OBJECT',properties:{
+        name:{type:'STRING'},
+        emoji:{type:'STRING',description:'un solo emoji que represente el plato'},
+        servings:{type:'INTEGER'},
+        prot:{type:'INTEGER'},carbs:{type:'INTEGER'},fat:{type:'INTEGER'},
+        ingredients:{type:'ARRAY',items:{type:'STRING'}},
+        steps:{type:'ARRAY',items:{type:'STRING'}}
+      },required:['name','servings','prot','carbs','fat','ingredients','steps']},
+      out=>out.name&&Array.isArray(out.ingredients)
+    );
+    openRecipeForm(null,out);
+  }catch(e){
+    $('modal-content').innerHTML=`<div style="font-size:18px;font-weight:800;margin-bottom:8px">No pude leer la receta</div><div class="text-sm text-mt mb-18">${esc(e.message)}</div><button class="btn-out" onclick="closeModal()">Cerrar</button>`;
+  }
+}
+
+function pickRecipeDish(rid){
+  const r=recipeLog.find(x=>x.id===rid);
+  if(!r) return;
+  const mealId=window._customMealId;
+  const wasComplete=isDayComplete(activeDate);
+  const log=getDayLog(activeDate);
+  log.meals[mealId]={custom:true,recipeId:r.id,name:(r.emoji||'📖')+' '+r.name,prot:r.prot||0,carbs:r.carbs||0,fat:r.fat||0};
+  save("food-log",mealLog);
+  closeModal();
+  if(!wasComplete&&isDayComplete(activeDate)&&activeDate===td()) celebrateDay();
+  renderToday();
 }
 
 function confirmCheat(){
@@ -1448,6 +1638,7 @@ function exportFood(){
     snackLog,
     checkinLog,
     photoLog,
+    recipeLog,
     weights:load('food-weight',[]),
     profile:load('food-profile',null),
     creatineLoad:load('food-creatine-load',null),
@@ -1497,6 +1688,7 @@ function doImportFood(mode){
     if(data.snackLog){const ex=new Set(snackLog.map(s=>s.date+s.note));data.snackLog.forEach(s=>{if(!ex.has(s.date+s.note)) snackLog.push(s);});}
     if(data.checkinLog){const ex=new Set(checkinLog.map(c=>c.date));data.checkinLog.forEach(c=>{if(!ex.has(c.date)) checkinLog.push(c);});}
     if(data.photoLog){const ex=new Set(photoLog.map(p=>p.date));data.photoLog.forEach(p=>{if(!ex.has(p.date)) photoLog.push(p);});}
+    if(data.recipeLog){const ex=new Set(recipeLog.map(r=>r.id));data.recipeLog.forEach(r=>{if(!ex.has(r.id)) recipeLog.push(r);});}
     if(data.weights){const existing=load('food-weight',[]);const ex=new Set(existing.map(w=>w.date));data.weights.forEach(w=>{if(!ex.has(w.date)) existing.push(w);});save('food-weight',existing);}
   } else {
     if(data.mealLog) mealLog=data.mealLog;
@@ -1504,6 +1696,7 @@ function doImportFood(mode){
     if(data.snackLog) snackLog=data.snackLog;
     if(data.checkinLog) checkinLog=data.checkinLog;
     if(data.photoLog) photoLog=data.photoLog;
+    if(data.recipeLog) recipeLog=data.recipeLog;
     if(data.plans){scenarios=data.plans;savePlans();}
     if(data.plansRev!=null) save('food-plans-rev',data.plansRev);
     if(data.weights) save('food-weight',data.weights);
@@ -1513,6 +1706,7 @@ function doImportFood(mode){
   }
   save("food-log",mealLog);save("food-cheat",cheatLog);
   save("food-snacks",snackLog);save("food-checkin",checkinLog);save("food-photo",photoLog);
+  saveRecipes();
   window._importFoodData=null;closeModal();
   alert("Datos importados");navTo('pg-today');
 }
