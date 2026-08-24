@@ -5,7 +5,7 @@ App single-file. Trackeo comidas + cheats + peso + déficit. Personal de Joaco.
 ## Modelo actual: tracking por excepción (desde 2026-08-24)
 
 - `AUTO_START='2026-08-24'`. Día `>= AUTO_START` = "auto": **sin registro cuenta como rutina cumplida**. Solo se registran excepciones: salteo, reemplazo (alt o plato del catálogo), cheat, snack.
-- Un solo scenario activo: `rutina` (4 comidas, ~1800 kcal, ~207g prot). Los 4 scenarios viejos quedan en `food-plans` con `legacy:true` — el historial pre-cutover los sigue leyendo. No borrarlos.
+- Un solo scenario activo: `rutina` (4 comidas, ~1650 kcal, ~192g prot). Los 4 scenarios viejos quedan en `food-plans` con `legacy:true` — el historial pre-cutover los sigue leyendo. No borrarlos.
 - `isAutoDay(d)` / `rutinaScn()` = helpers centrales. Branch auto en: `dayKcal`, `dayMacros`, `getDayStatus`, `isDayComplete`, `getDayLog`, `analyzeWindow`, `renderAdherenceCard`, `renderToday` (→ `renderAutoDay`).
 - Días auto futuros no cuentan (status null, kcal 0).
 - `analyzeWindow`: todo día auto cuenta como "logged" con consumo = rutina − salteos + reemplazos. Completeness sube sola con el tiempo.
