@@ -41,6 +41,7 @@ App single-file. Trackeo comidas + cheats + peso + déficit. Personal de Joaco.
 | `food-snacks` | `[{date, note, kcal}]` — extras no-cheat |
 | `food-checkin` | `[{date, fuerza, energia, hambre, sueno, humor}]` — '+'/'='/'-' por campo, 1 por semana ISO |
 | `food-photo` | `[{date}]` — solo fecha, fotos viven en galería del celu |
+| `food-recipes` | `[{id, name, emoji, servings, prot, carbs, fat (por porción), ingredients:[str], steps:[str]}]` — screenshots NO se guardan, solo lo estructurado |
 
 ## Modelo meal
 
@@ -65,7 +66,8 @@ Field guardado en custom meal: `dish` (nuevo) o `protein` (legacy backward compa
 | ID | Nav | Función |
 |---|---|---|
 | `pg-today` | ✓ Hoy | Días auto: lista de comidas default-✓, tocar una abre modal de excepción (volver al plan / alt / otro plato / salteé). Días pre-cutover: UI vieja de checkboxes. Streak en header. |
-| `pg-plans` | 📋 Planes | Detalle de la rutina única (`showPlan()` sin args, renderiza primer scenario no-legacy). Editable. |
+| `pg-plans` | 📋 Planes | Detalle de la rutina única (`showPlan()` sin args, renderiza primer scenario no-legacy). Editable. Botón 📖 en header → `pg-recipes`. |
+| `pg-recipes` | (Planes → 📖) | Recetario: CRUD manual + import de screenshot (`importRecipePhoto` → canvas downscale 1280px jpeg → `geminiCall` con `inline_data` → form prefilled editable). Recetas aparecen primero en el picker de "Comí otro plato" (`renderCustomStep1` → `pickRecipeDish`, guarda `{custom, recipeId, name, macros}`). |
 | `pg-cal` | 📅 Calendario | Mes con colores (complete/partial/cheat). Click día → abre en `pg-today`. |
 | `pg-cheat` | 🍕 Cheat | Racha sin cheat, registrar cheat: presets argentinos (`CHEAT_PRESETS`, tap acumula nota+kcal) + kcal libre + botón ✨ Gemini (`estimateCheatKcal` → `geminiEstimate`: cadena de fallback `GEMINI_MODELS` lite-first porque el free tier tira 503 de saturación por-modelo; 403 corta la cadena, otros errores pasan al siguiente). Kcal vacío al confirmar → usa promedio histórico (`window._cheatDef`). |
 | `pg-progress` | 📊 Progreso | Peso + perfil + análisis 4 sem (TDEE, déficit, pérdida real vs esperada) + carga creatina. |
