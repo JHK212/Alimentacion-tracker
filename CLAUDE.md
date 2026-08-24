@@ -16,6 +16,7 @@ App single-file. Trackeo comidas + cheats + peso + déficit. Personal de Joaco.
 - PWA: `index.html` + `sw.js`. Manifest e icon generados runtime (canvas/blob).
 - Mobile-first, max-width 480px. Tema dark.
 - CDN único: Google Fonts (DM Sans + JetBrains Mono).
+- Única llamada externa runtime: Gemini API (estimador de kcal en cheats, POST — el SW no la cachea). Key personal del user en `food-cfg.geminiKey` (localStorage), nunca en el repo. Sin key el botón ✨ no se renderiza y todo funciona manual.
 - Persistencia: localStorage. Sin auth.
 
 ## Repo
@@ -66,7 +67,7 @@ Field guardado en custom meal: `dish` (nuevo) o `protein` (legacy backward compa
 | `pg-today` | ✓ Hoy | Días auto: lista de comidas default-✓, tocar una abre modal de excepción (volver al plan / alt / otro plato / salteé). Días pre-cutover: UI vieja de checkboxes. Streak en header. |
 | `pg-plans` | 📋 Planes | Detalle de la rutina única (`showPlan()` sin args, renderiza primer scenario no-legacy). Editable. |
 | `pg-cal` | 📅 Calendario | Mes con colores (complete/partial/cheat). Click día → abre en `pg-today`. |
-| `pg-cheat` | 🍕 Cheat | Racha sin cheat, registrar cheat con date picker + kcal libre. |
+| `pg-cheat` | 🍕 Cheat | Racha sin cheat, registrar cheat: presets argentinos (`CHEAT_PRESETS`, tap acumula nota+kcal) + kcal libre + botón ✨ Gemini (`estimateCheatKcal`, modelo `gemini-flash-latest`, structured output JSON). Kcal vacío al confirmar → usa promedio histórico (`window._cheatDef`). |
 | `pg-progress` | 📊 Progreso | Peso + perfil + análisis 4 sem (TDEE, déficit, pérdida real vs esperada) + carga creatina. |
 | `pg-config` | (header gear) | Export/import JSON, borrar días, reset plans. |
 | `pg-del` | (config →) | Multi-select borrar días del historial. |
