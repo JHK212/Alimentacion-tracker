@@ -53,6 +53,7 @@ App single-file. Trackeo comidas + cheats + peso + déficit. Personal de Joaco.
 ```
 
 - `alts` → variantes con macros propios (ej: desayuno con huevos, cena atún). Se eligen en el modal de la comida (`openMealActions` → `pickAlt`). Se guardan como `{custom:true, name, prot, carbs, fat}`; `customMealLabel` devuelve `v.name` si existe.
+- `parts` → componentes de la comida con macros propios (deben sumar los macros del meal). Modal → "🧩 Comí solo una parte" (`startMealParts`/`renderMealParts`/`saveMealParts`): destildar lo no comido guarda `{custom:true, partial:true, name:'Solo ...', macros sumados}`. Todo tildado = vuelve al plan; nada = skipped. No se ofrece si hay mealprep activo en esa comida.
 - `flexible:true` → habilita "🍽️ Comí otro plato" (catálogo DISHES). Default true para `almuerzo`/`cena`.
 - `optional:true` → no penaliza el cálculo de día complete. Badge OPCIONAL.
 - `supplements:[]` → array strings. Render como callout naranja (`.supp-tag`).
