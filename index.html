@@ -449,7 +449,7 @@ function dayKcal(dateStr){
     if(dateStr<=td()) rutinaScn().meals.forEach(m=>{
       const v=log&&log.meals?log.meals[m.id]:undefined;
       if(v==='skipped') return;
-      kcal+=mealKcal(v&&v.custom?v:m);
+      kcal+=mealKcal(v&&v.custom?v:effMeal(m,dateStr));
     });
   } else if(log&&log.scenario){
     const scn=scenarios.find(s=>s.id===log.scenario);
@@ -467,7 +467,7 @@ function dayMacros(dateStr){
     if(dateStr<=td()) rutinaScn().meals.forEach(m=>{
       const v=log&&log.meals?log.meals[m.id]:undefined;
       if(v==='skipped') return;
-      const src=(v&&v.custom)?v:m;
+      const src=(v&&v.custom)?v:effMeal(m,dateStr);
       p+=src.prot||0; c+=src.carbs||0; f+=src.fat||0;
     });
   } else if(log&&log.scenario){
@@ -982,7 +982,7 @@ function renderAutoDay(){
   const log=mealLog[activeDate]; // lectura: no crear entrada hasta que haya excepción
   const isToday=activeDate===td();
   const scn=rutinaScn();
-  const totalMacros=scnMacros(scn);
+  const totalMacros=dayTargetMacros(activeDate);
   const kcalDay=dayKcal(activeDate);
   const skips=scn.meals.filter(m=>log&&log.meals&&log.meals[m.id]==='skipped').length;
   const ok=skips===0;
@@ -1031,7 +1031,8 @@ function renderAutoDay(){
   html+='<div class="text-xs text-mt fw-600 mb-8 mt-20" style="text-transform:uppercase;letter-spacing:1.5px">Comidas</div>';
   scn.meals.forEach(m=>{
     const v=log&&log.meals?log.meals[m.id]:undefined;
-    let icon='✓', color='var(--gn)', label=esc(m.icon)+' '+esc(m.name), sub=esc(m.desc), kcal=mealKcal(m), nameStyle='';
+    const base=effMeal(m,activeDate);
+    let icon='✓', color='var(--gn)', label=esc(base.icon)+' '+esc(m.name), sub=esc(base.desc), kcal=mealKcal(base), nameStyle='';
     if(v==='skipped'){icon='✕';color='var(--dn)';nameStyle='text-decoration:line-through;color:var(--dn)';sub='No la comiste · tocá para volver al plan';kcal=0;}
     else if(v&&v.custom){icon='🔄';color='var(--ac)';label=esc(customMealLabel(v));sub='Reemplazo de: '+esc(m.name);kcal=mealKcal(v);}
     html+=`<div class="meal-row${v==='skipped'?'':' done'}" onclick="openMealActions('${m.id}')">
@@ -1092,14 +1093,17 @@ function openMealActions(mealId){
   if(!m) return;
   const log=mealLog[activeDate];
   const v=log&&log.meals?log.meals[mealId]:undefined;
-  let html=`<div style="font-size:18px;font-weight:800;margin-bottom:4px">${esc(m.icon)} ${esc(m.name)}</div>`;
-  html+=`<div class="text-sm text-mt mb-18" style="line-height:1.5">${esc(m.desc)} · <span class="mono">${mealKcal(m)} kcal</span></div>`;
-  if(v!==undefined) html+=`<button class="btn mb-12" onclick="resetMeal('${m.id}')">✓ Volver al plan</button>`;
+  const base=effMeal(m,activeDate);
+  const isMp=base!==m;
+  let html=`<div style="font-size:18px;font-weight:800;margin-bottom:4px">${esc(base.icon)} ${esc(m.name)}</div>`;
+  html+=`<div class="text-sm text-mt mb-18" style="line-height:1.5">${esc(base.desc)} · <span class="mono">${mealKcal(base)} kcal</span></div>`;
+  if(v!==undefined) html+=`<button class="btn mb-12" onclick="resetMeal('${m.id}')">✓ Volver al ${isMp?'mealprep':'plan'}</button>`;
   (m.alts||[]).forEach((a,i)=>{
     html+=`<button class="btn-out mb-12" onclick="pickAlt('${m.id}',${i})" style="color:var(--ac);border-color:rgba(230,149,0,0.3)">🔄 ${esc(a.name)} · <span class="mono">${mealKcal(a)} kcal</span></button>`;
   });
   if(isFlexible(m)) html+=`<button class="btn-out mb-12" onclick="openCustomMeal('${m.id}')">🍽️ Comí otro plato</button>`;
   if(v!=='skipped') html+=`<button class="btn-out mb-12" onclick="skipMeal('${m.id}');closeModal()" style="color:var(--dn);border-color:rgba(239,68,68,0.3)">✕ No la comí</button>`;
+  if(isMp) html+=`<button class="btn-out mb-12" onclick="clearMealprep();closeModal();renderToday()" style="color:var(--dn);border-color:rgba(239,68,68,0.3)">🗑 Quitar mealprep semanal</button>`;
   html+=`<button class="btn-out" onclick="closeModal()">Cancelar</button>`;
   $("modal-content").innerHTML=html;
   $("modal").classList.add("show");
@@ -1421,13 +1425,64 @@ function saveGeminiKey(){
 // {id, name, emoji, servings, prot, carbs, fat (por porción), ingredients:[str], steps:[str]}
 function saveRecipes(){save('food-recipes',recipeLog);}
 
+// Mealprep semanal: una receta fijada como default de una comida por 7 días.
+// No escribe logs futuros — solo cambia el default efectivo de los días auto.
+function activeMealprep(dateStr){
+  const mp=load('food-mealprep',null);
+  if(!mp||!mp.recipeId||dateStr<mp.start||dateStr>mp.end) return null;
+  const r=recipeLog.find(x=>x.id===mp.recipeId);
+  return r?{mp,r}:null;
+}
+
+function effMeal(m,dateStr){
+  const a=activeMealprep(dateStr);
+  if(a&&a.mp.mealId===m.id){
+    return {...m,icon:a.r.emoji||'🍲',desc:'Mealprep semanal: '+a.r.name+' (1 porción) · hasta '+fd(a.mp.end),
+            prot:a.r.prot||0,carbs:a.r.carbs||0,fat:a.r.fat||0};
+  }
+  return m;
+}
+
+function dayTargetMacros(dateStr){
+  let p=0,c=0,f=0;
+  rutinaScn().meals.forEach(m=>{const e=effMeal(m,dateStr);p+=e.prot||0;c+=e.carbs||0;f+=e.fat||0;});
+  return {p,c,f,kcal:p*4+c*4+f*9};
+}
+
+function setMealprep(rid,mealId,start){
+  const cur=new Date(start+'T12:00:00Z');
+  cur.setUTCDate(cur.getUTCDate()+6);
+  save('food-mealprep',{recipeId:rid,mealId,start,end:cur.toISOString().slice(0,10)});
+}
+
+function clearMealprep(){
+  save('food-mealprep',null);
+  if($('pg-recipes').classList.contains('active')) renderRecipes();
+  if($('pg-today').classList.contains('active')) renderToday();
+}
+
 function renderRecipes(){
   const el=$('recipes-list');
+  let banner='';
+  const mp=load('food-mealprep',null);
+  if(mp&&td()<=mp.end){
+    const r=recipeLog.find(x=>x.id===mp.recipeId);
+    if(r) banner=`<div class="card" style="cursor:default;border-color:var(--ac)">
+      <div class="row">
+        <div style="flex:1">
+          <div class="text-xs text-mt fw-600">MEALPREP DE LA SEMANA</div>
+          <div class="fw-700 mt-4">${esc(r.emoji||'🍲')} ${esc(r.name)}</div>
+          <div class="text-xs text-mt mt-4">Default de ${esc(mp.mealId)} hasta ${fd(mp.end)}</div>
+        </div>
+        <button class="icon-btn" onclick="clearMealprep()">✕</button>
+      </div>
+    </div>`;
+  }
   if(!recipeLog.length){
-    el.innerHTML='<div class="text-sm text-mt" style="text-align:center;padding:20px 0;line-height:1.6">Sin recetas todavía.<br>Subí un screenshot de una receta y Gemini la traduce, arma ingredientes, pasos y macros por porción.</div>';
+    el.innerHTML=banner+'<div class="text-sm text-mt" style="text-align:center;padding:20px 0;line-height:1.6">Sin recetas todavía.<br>Subí un screenshot de una receta y Gemini la traduce, arma ingredientes, pasos y macros por porción.</div>';
     return;
   }
-  el.innerHTML=recipeLog.map(r=>`
+  el.innerHTML=banner+recipeLog.map(r=>`
     <div class="card" onclick="viewRecipe('${r.id}')" style="cursor:pointer">
       <div class="row">
         <div style="flex:1">
@@ -1571,6 +1626,11 @@ function pickRecipeDish(rid){
   log.meals[mealId]={custom:true,recipeId:r.id,name:(r.emoji||'📖')+' '+r.name,prot:r.prot||0,carbs:r.carbs||0,fat:r.fat||0};
   save("food-log",mealLog);
   closeModal();
+  const mp=load('food-mealprep',null);
+  const mpVigente=mp&&mp.recipeId===r.id&&mp.mealId===mealId&&activeDate<=mp.end;
+  if(!mpVigente&&confirm('¿Es tu mealprep de la semana? Queda como default de esta comida por 7 días (sin tener que marcarla cada día).')){
+    setMealprep(r.id,mealId,activeDate);
+  }
   if(!wasComplete&&isDayComplete(activeDate)&&activeDate===td()) celebrateDay();
   renderToday();
 }
@@ -2089,7 +2149,7 @@ function analyzeWindow(daysBack){
       rutinaScn().meals.forEach(m=>{
         const v=log&&log.meals?log.meals[m.id]:undefined;
         if(v==='skipped') return;
-        planKcal+=mealKcal(v&&v.custom?v:m);
+        planKcal+=mealKcal(v&&v.custom?v:effMeal(m,d));
       });
       return;
     }

@@ -42,6 +42,7 @@ App single-file. Trackeo comidas + cheats + peso + déficit. Personal de Joaco.
 | `food-checkin` | `[{date, fuerza, energia, hambre, sueno, humor}]` — '+'/'='/'-' por campo, 1 por semana ISO |
 | `food-photo` | `[{date}]` — solo fecha, fotos viven en galería del celu |
 | `food-recipes` | `[{id, name, emoji, servings, prot, carbs, fat (por porción), ingredients:[str], steps:[str]}]` — screenshots NO se guardan, solo lo estructurado |
+| `food-mealprep` | `{recipeId, mealId, start, end}` o null — receta fijada como default de una comida por 7 días. `effMeal(m,d)` la aplica en días auto sin escribir logs futuros; excepciones (skip/otro plato) la pisan. Se fija al elegir receta en el picker (confirm) y se quita desde Recetas o el modal de la comida. |
 
 ## Modelo meal
 
