@@ -109,6 +109,7 @@ Field guardado en custom meal: `dish` (nuevo) o `protein` (legacy backward compa
 ## Service Worker
 
 - Cache name `app-vNN`. **Bumpear en CADA cambio funcional o de assets.**
+- **Versión visible**: footer "app vNN" en `pg-config` (index.html). Bumpearlo JUNTO con el SW — es la forma de verificar remotamente qué versión corre el user.
 - Estrategia: network-first, cache fallback.
 - Última versión actual en `sw.js` (ver `const CACHE`).
 - Si user no ve cambios después de deploy → 90% es que faltó bumpear.
