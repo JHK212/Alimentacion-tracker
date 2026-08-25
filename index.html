@@ -253,7 +253,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="sec" style="padding-top:0">
     <button class="btn-out danger" onclick="resetPlans()">Resetear planes originales</button>
   </div>
-  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v34</div>
+  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v35</div>
 </div>
 
 <!-- ══ DELETE DAYS ══ -->
@@ -294,13 +294,13 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
 const DEFAULT_SCENARIOS = [
   { id:"rutina", label:"🍽️ Rutina", short:"Rutina",
     meals:[
-      {id:"desayuno",time:"09:30",icon:"🥞",name:"Desayuno",desc:"Panqueque grande (60g mezcla) + yogur griego proteico (150g) + 1 scoop whey",prot:61,carbs:32,fat:9,
-       alts:[{name:"🥞🍳 Panqueque + 3 huevos",prot:40,carbs:23,fat:21}],
-       parts:[{name:"Panqueque grande",prot:22,carbs:22,fat:6},{name:"Yogur proteico + scoop",prot:39,carbs:10,fat:3}]},
+      {id:"desayuno",time:"09:30",icon:"🥞",name:"Desayuno",desc:"Panqueque grande (60g mezcla + 1 huevo) + yogur griego proteico (150g) + 1 scoop whey",prot:67,carbs:33,fat:14,
+       alts:[{name:"🥞🍳 Panqueque + 3 huevos",prot:46,carbs:24,fat:26}],
+       parts:[{name:"Panqueque grande (c/huevo)",prot:28,carbs:23,fat:11},{name:"Yogur proteico + scoop",prot:39,carbs:10,fat:3}]},
       {id:"almuerzo",time:"13:30",icon:"🍲",name:"Mealprep",desc:"230-240g picada magra cruda (grasa colada) + 200g papa/batata + verdura",prot:53,carbs:42,fat:17,flexible:true,
        parts:[{name:"Picada magra (230-240g)",prot:47,carbs:0,fat:17},{name:"Papa/batata (200g)",prot:4,carbs:37,fat:0},{name:"Verdura",prot:2,carbs:5,fat:0}]},
       {id:"merienda",time:"17:30",icon:"🧁",name:"Merienda",desc:"Mugcake proteico (30g harina almendra + 1 scoop whey + 2 huevos)",prot:42,carbs:6,fat:27,
-       alts:[{name:"🥞 Panqueque chico + yogur + scoop",prot:54,carbs:25,fat:7}]},
+       alts:[{name:"🥞 Panqueque chico (c/huevo) + yogur + scoop",prot:60,carbs:26,fat:12}]},
       {id:"cena",time:"21:30",icon:"🥩",name:"Cena",desc:"200g carne (vaca/pollo/cerdo magro) + ensalada sin aceite",prot:44,carbs:8,fat:12,flexible:true,
        alts:[{name:"🐟 Atún de lata + ensalada",prot:32,carbs:8,fat:2}],
        parts:[{name:"Carne (200g)",prot:42,carbs:0,fat:12},{name:"Ensalada",prot:2,carbs:8,fat:0}]},
@@ -317,7 +317,7 @@ const AUTO_START = '2026-08-24';
 function isAutoDay(d){return d>=AUTO_START;}
 function rutinaScn(){return scenarios.find(s=>!s.legacy)||scenarios[0];}
 
-const PLANS_REV = 9;
+const PLANS_REV = 10;
 const PLAN_PATCHES = {
   1: [
     {scn:'tarde', meal:'desayuno', desc:'2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano + 5g creatina'},
@@ -362,6 +362,13 @@ const PLAN_PATCHES = {
     {scn:'rutina', meal:'desayuno', parts:[{name:'Panqueque grande',prot:22,carbs:22,fat:6},{name:'Yogur proteico + scoop',prot:39,carbs:10,fat:3}]},
     {scn:'rutina', meal:'almuerzo', parts:[{name:'Picada magra (230-240g)',prot:47,carbs:0,fat:17},{name:'Papa/batata (200g)',prot:4,carbs:37,fat:0},{name:'Verdura',prot:2,carbs:5,fat:0}]},
     {scn:'rutina', meal:'cena', parts:[{name:'Carne (200g)',prot:42,carbs:0,fat:12},{name:'Ensalada',prot:2,carbs:8,fat:0}]},
+  ],
+  // el panqueque siempre lleva 1 huevo entero en la masa (+~70 kcal, no estaba contado)
+  10: [
+    {scn:'rutina', meal:'desayuno', desc:'Panqueque grande (60g mezcla + 1 huevo) + yogur griego proteico (150g) + 1 scoop whey', prot:67, carbs:33, fat:14,
+     alts:[{name:'🥞🍳 Panqueque + 3 huevos',prot:46,carbs:24,fat:26}],
+     parts:[{name:'Panqueque grande (c/huevo)',prot:28,carbs:23,fat:11},{name:'Yogur proteico + scoop',prot:39,carbs:10,fat:3}]},
+    {scn:'rutina', meal:'merienda', alts:[{name:'🥞 Panqueque chico (c/huevo) + yogur + scoop',prot:60,carbs:26,fat:12}]},
   ],
 };
 
