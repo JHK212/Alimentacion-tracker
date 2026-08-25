@@ -42,7 +42,7 @@ App single-file. Trackeo comidas + cheats + peso + déficit. Personal de Joaco.
 | `food-checkin` | `[{date, fuerza, energia, hambre, sueno, humor}]` — '+'/'='/'-' por campo, 1 por semana ISO |
 | `food-photo` | `[{date}]` — solo fecha, fotos viven en galería del celu |
 | `food-recipes` | `[{id, name, emoji, servings, prot, carbs, fat (por porción), ingredients:[str], steps:[str]}]` — screenshots NO se guardan, solo lo estructurado |
-| `food-mealprep` | `{recipeId, mealId, start, end}` o null — receta fijada como default de una comida por 7 días. `effMeal(m,d)` la aplica en días auto sin escribir logs futuros; excepciones (skip/otro plato) la pisan. Se fija al elegir receta en el picker (confirm) y se quita desde Recetas o el modal de la comida. |
+| `food-mealprep` | `[{recipeId, mealId, start, end}]` — historial de ventanas de mealprep (7 días c/u). Un activo por comida (almuerzo Y cena simultáneos OK). `mealprepFor(mealId,d)` resuelve el vigente; `effMeal(m,d)` lo aplica en días auto sin escribir logs futuros; excepciones lo pisan. Re-fijar trunca la ventana anterior (historial queda para el calendario); `clearMealprep(mealId)` trunca a ayer. Backward compat: objeto viejo se normaliza a array en `mealprepList()`. |
 
 ## Modelo meal
 
@@ -70,7 +70,7 @@ Field guardado en custom meal: `dish` (nuevo) o `protein` (legacy backward compa
 | `pg-today` | ✓ Hoy | Días auto: lista de comidas default-✓, tocar una abre modal de excepción (volver al plan / alt / otro plato / salteé). Días pre-cutover: UI vieja de checkboxes. Streak en header. |
 | `pg-plans` | 📋 Planes | Detalle de la rutina única (`showPlan()` sin args, renderiza primer scenario no-legacy). Editable. Botón 📖 en header → `pg-recipes`. |
 | `pg-recipes` | (Planes → 📖) | Recetario: CRUD manual + import de screenshot (`importRecipePhoto` → canvas downscale 1280px jpeg → `geminiCall` con `inline_data` → form prefilled editable). Recetas aparecen primero en el picker de "Comí otro plato" (`renderCustomStep1` → `pickRecipeDish`, guarda `{custom, recipeId, name, macros}`). |
-| `pg-cal` | 📅 Calendario | Mes con colores (complete/partial/cheat). Click día → abre en `pg-today`. |
+| `pg-cal` | 📅 Calendario | Mes con colores (complete/partial/cheat). Barras superiores `.cal-mp` = rachas de mealprep (naranja mediodía / violeta noche, futuro incluido). Click día auto → `dayDetail(ds)` (modal: comidas ✓/✕/🔄, cheats, snacks, macros vs target, creatina, botón editar → `openDay`); día legacy → `openDay` directo. |
 | `pg-cheat` | 🍕 Cheat | Racha sin cheat, registrar cheat: presets argentinos (`CHEAT_PRESETS`, tap acumula nota+kcal) + kcal libre + botón ✨ Gemini (`estimateCheatKcal` → `geminiEstimate`: cadena de fallback `GEMINI_MODELS` lite-first porque el free tier tira 503 de saturación por-modelo; 403 corta la cadena, otros errores pasan al siguiente). Kcal vacío al confirmar → usa promedio histórico (`window._cheatDef`). |
 | `pg-progress` | 📊 Progreso | Peso + perfil + análisis 4 sem (TDEE, déficit, pérdida real vs esperada) + carga creatina. |
 | `pg-config` | (header gear) | Export/import JSON, borrar días, reset plans. |
