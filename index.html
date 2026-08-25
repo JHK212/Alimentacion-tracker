@@ -57,6 +57,9 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
 .cal-ind{position:absolute;font-size:8px;line-height:1;pointer-events:none;}
 .cal-ind.w{bottom:-3px;left:-2px;}
 .cal-ind.p{bottom:-3px;right:-2px;}
+.cal-mp{position:absolute;top:1px;height:3px;border-radius:2px;pointer-events:none;}
+.cal-mp.a{left:3px;right:52%;background:var(--ac);}
+.cal-mp.c{left:52%;right:3px;background:#a78bfa;}
 .cal-day.empty{color:transparent;}
 .cal-day.complete{background:rgba(34,197,94,0.12);color:var(--gn);font-weight:700;border:1px solid rgba(34,197,94,0.25);}
 .cal-day.partial{background:rgba(234,179,8,0.1);color:var(--yw);font-weight:700;border:1px solid rgba(234,179,8,0.2);}
@@ -250,7 +253,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="sec" style="padding-top:0">
     <button class="btn-out danger" onclick="resetPlans()">Resetear planes originales</button>
   </div>
-  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v33</div>
+  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v34</div>
 </div>
 
 <!-- ══ DELETE DAYS ══ -->
@@ -1114,7 +1117,7 @@ function openMealActions(mealId){
   if(!isMp&&m.parts&&m.parts.length) html+=`<button class="btn-out mb-12" onclick="startMealParts('${m.id}')">🧩 Comí solo una parte</button>`;
   if(isFlexible(m)) html+=`<button class="btn-out mb-12" onclick="openCustomMeal('${m.id}')">🍽️ Comí otro plato</button>`;
   if(v!=='skipped') html+=`<button class="btn-out mb-12" onclick="skipMeal('${m.id}');closeModal()" style="color:var(--dn);border-color:rgba(239,68,68,0.3)">✕ No la comí</button>`;
-  if(isMp) html+=`<button class="btn-out mb-12" onclick="clearMealprep();closeModal();renderToday()" style="color:var(--dn);border-color:rgba(239,68,68,0.3)">🗑 Quitar mealprep semanal</button>`;
+  if(isMp) html+=`<button class="btn-out mb-12" onclick="clearMealprep('${m.id}');closeModal();renderToday()" style="color:var(--dn);border-color:rgba(239,68,68,0.3)">🗑 Quitar mealprep semanal</button>`;
   html+=`<button class="btn-out" onclick="closeModal()">Cancelar</button>`;
   $("modal-content").innerHTML=html;
   $("modal").classList.add("show");
@@ -1326,11 +1329,13 @@ function renderCal(){
     const kcalLabel=kcal>0?`<div style="font-size:8px;font-family:var(--fm);opacity:0.7;margin-top:1px;line-height:1">${kcal}</div>`:'';
     const wInd=weightDates.has(ds)?'<span class="cal-ind w">⚖️</span>':'';
     const pInd=photoDates.has(ds)?'<span class="cal-ind p">📷</span>':'';
-    if(future) html+=`<div class="${cls}" style="opacity:0.3">${d}</div>`;
-    else html+=`<div class="${cls}" onclick="openDay('${ds}')">${d}${kcalLabel}${wInd}${pInd}</div>`;
+    const mpInd=(mealprepFor('almuerzo',ds)?'<span class="cal-mp a"></span>':'')+(mealprepFor('cena',ds)?'<span class="cal-mp c"></span>':'');
+    if(future) html+=`<div class="${cls}" style="opacity:0.3">${d}${mpInd}</div>`;
+    else html+=`<div class="${cls}" onclick="${isAutoDay(ds)?'dayDetail':'openDay'}('${ds}')">${d}${kcalLabel}${wInd}${pInd}${mpInd}</div>`;
   }
   html+='</div>';
-  $("food-calendar").innerHTML=html;
+  const mpLegend=mealprepList().length?'<div class="text-xs text-mt mt-8" style="text-align:center"><span style="color:var(--ac)">▔</span> mealprep mediodía · <span style="color:#a78bfa">▔</span> mealprep noche</div>':'';
+  $("food-calendar").innerHTML=html+mpLegend;
 
   let complete=0, total=0;
   const now=new Date();
@@ -1344,6 +1349,69 @@ function renderCal(){
   }
   $("cal-complete").textContent=complete;
   $("cal-adherence").textContent=total>0?Math.round((complete/total)*100):0;
+}
+
+// ── Detalle de día (calendario, solo días auto) ──
+function dayDetail(ds){
+  const scn=rutinaScn();
+  const log=mealLog[ds];
+  const st=getDayStatus(ds)||'none';
+  const stInfo={
+    'complete':['✅','Día completo','var(--gn)'],
+    'complete-cheat':['✅','Completo + cheat 🍕','var(--gn)'],
+    'partial':['⚠️','Día parcial','var(--yw)'],
+    'partial-cheat':['⚠️','Parcial + cheat 🍕','var(--yw)'],
+    'cheat':['🍕','Cheat','var(--dn)'],
+    'none':['—','Sin datos','var(--mt)'],
+  }[st];
+  let html=`<div style="font-size:18px;font-weight:800;margin-bottom:2px;text-transform:capitalize">${fdLong(ds)}</div>`;
+  html+=`<div class="text-sm fw-700 mb-12" style="color:${stInfo[2]}">${stInfo[0]} ${stInfo[1]}</div>`;
+  html+='<div style="max-height:55vh;overflow-y:auto;padding-right:4px">';
+  scn.meals.forEach(m=>{
+    const v=log&&log.meals?log.meals[m.id]:undefined;
+    const base=effMeal(m,ds);
+    let icon='✓',color='var(--gn)',label=esc(base.icon)+' '+esc(m.name),kcal=mealKcal(base);
+    let extra=base!==m?' <span class="text-xs" style="color:var(--ac)">🍲</span>':'';
+    let style='';
+    if(v==='skipped'){icon='✕';color='var(--dn)';style='text-decoration:line-through;color:var(--dn)';kcal=0;extra='';}
+    else if(v&&v.custom){icon='🔄';color='var(--ac)';label=esc(customMealLabel(v));kcal=mealKcal(v);extra='';}
+    html+=`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)22">
+      <span style="color:${color};font-size:14px">${icon}</span>
+      <span class="mono text-mt" style="font-size:10px;min-width:38px">${esc(m.time)}</span>
+      <span class="text-sm fw-600" style="flex:1;${style}">${label}${extra}</span>
+      <span class="mono text-xs text-mt">${kcal}</span>
+    </div>`;
+  });
+  const _ch=cheatLog.filter(c=>c.date===ds);
+  _ch.forEach(c=>{
+    html+=`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)22">
+      <span style="font-size:14px">🍕</span><span class="mono text-mt" style="font-size:10px;min-width:38px"></span>
+      <span class="text-sm fw-600" style="flex:1;color:var(--dn)">${esc(c.note)}</span>
+      <span class="mono text-xs text-mt">${c.kcal||0}</span>
+    </div>`;
+  });
+  snackLog.filter(s=>s.date===ds).forEach(s=>{
+    html+=`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)22">
+      <span style="font-size:14px">🍎</span><span class="mono text-mt" style="font-size:10px;min-width:38px"></span>
+      <span class="text-sm fw-600" style="flex:1">${esc(s.note)}</span>
+      <span class="mono text-xs text-mt">${s.kcal||0}</span>
+    </div>`;
+  });
+  const dm=dayMacros(ds), tg=dayTargetMacros(ds);
+  const protColor=dm.p>=tg.p?'var(--gn)':(dm.p>=tg.p*0.9?'var(--yw)':'var(--dn)');
+  html+=`<div class="card" style="cursor:default;margin-top:12px;padding:14px">
+    <div class="row mb-4"><span class="text-sm fw-700">Total del día</span><span class="mono fw-800 text-ac">${dayKcal(ds)} kcal</span></div>
+    <div class="row text-xs" style="margin-bottom:2px"><span class="text-mt">Proteína</span><span class="mono fw-700" style="color:${protColor}">${dm.p} / ${tg.p}g</span></div>
+    <div class="row text-xs text-mt" style="margin-bottom:2px"><span>Carbos</span><span class="mono">${dm.c} / ${tg.c}g</span></div>
+    <div class="row text-xs text-mt"><span>Grasas</span><span class="mono">${dm.f} / ${tg.f}g</span></div>
+  </div>`;
+  const cre=log?log.creatine:undefined;
+  html+=`<div class="row" style="padding:10px 4px 0"><span class="text-sm fw-700">🧪 Creatina</span><span class="text-sm mono fw-700" style="color:${cre===true?'var(--gn)':cre===false?'var(--dn)':'var(--mt)'}">${cre===true?'✓ tomada':cre===false?'✗ no':'— sin registro'}</span></div>`;
+  html+='</div>';
+  html+=`<button class="btn mt-12 mb-12" onclick="closeModal();openDay('${ds}')">✏️ Editar este día</button>`;
+  html+='<button class="btn-out" onclick="closeModal()">Cerrar</button>';
+  $('modal-content').innerHTML=html;
+  $('modal').classList.add('show');
 }
 
 // ── Cheat Meal ──
@@ -1489,18 +1557,33 @@ function saveGeminiKey(){
 // {id, name, emoji, servings, prot, carbs, fat (por porción), ingredients:[str], steps:[str]}
 function saveRecipes(){save('food-recipes',recipeLog);}
 
-// Mealprep semanal: una receta fijada como default de una comida por 7 días.
+// Mealprep semanal: receta fijada como default de una comida por 7 días.
+// Lista con historial: un activo por comida (mediodía Y noche a la vez), las
+// ventanas viejas quedan para que el calendario dibuje las rachas.
 // No escribe logs futuros — solo cambia el default efectivo de los días auto.
-function activeMealprep(dateStr){
-  const mp=load('food-mealprep',null);
-  if(!mp||!mp.recipeId||dateStr<mp.start||dateStr>mp.end) return null;
-  const r=recipeLog.find(x=>x.id===mp.recipeId);
-  return r?{mp,r}:null;
+function mealprepList(){
+  let l=load('food-mealprep',[]);
+  if(!l) return [];
+  return Array.isArray(l)?l:[l];
+}
+
+function prevDayStr(d){
+  const c=new Date(d+'T12:00:00Z');
+  c.setUTCDate(c.getUTCDate()-1);
+  return c.toISOString().slice(0,10);
+}
+
+function mealprepFor(mealId,dateStr){
+  const c=mealprepList().filter(e=>e.mealId===mealId&&dateStr>=e.start&&dateStr<=e.end);
+  if(!c.length) return null;
+  c.sort((a,b)=>b.start.localeCompare(a.start));
+  const r=recipeLog.find(x=>x.id===c[0].recipeId);
+  return r?{mp:c[0],r}:null;
 }
 
 function effMeal(m,dateStr){
-  const a=activeMealprep(dateStr);
-  if(a&&a.mp.mealId===m.id){
+  const a=mealprepFor(m.id,dateStr);
+  if(a){
     return {...m,icon:a.r.emoji||'🍲',desc:'Mealprep semanal: '+a.r.name+' (1 porción) · hasta '+fd(a.mp.end),
             prot:a.r.prot||0,carbs:a.r.carbs||0,fat:a.r.fat||0};
   }
@@ -1516,11 +1599,19 @@ function dayTargetMacros(dateStr){
 function setMealprep(rid,mealId,start){
   const cur=new Date(start+'T12:00:00Z');
   cur.setUTCDate(cur.getUTCDate()+6);
-  save('food-mealprep',{recipeId:rid,mealId,start,end:cur.toISOString().slice(0,10)});
+  const end=cur.toISOString().slice(0,10);
+  // ventanas del mismo meal que se pisan: las que arrancan después se van, las anteriores se truncan
+  const list=mealprepList().filter(e=>!(e.mealId===mealId&&e.start>=start));
+  list.forEach(e=>{if(e.mealId===mealId&&e.end>=start) e.end=prevDayStr(start);});
+  list.push({recipeId:rid,mealId,start,end});
+  save('food-mealprep',list);
 }
 
-function clearMealprep(){
-  save('food-mealprep',null);
+function clearMealprep(mealId){
+  const today=td();
+  const list=mealprepList().filter(e=>!(e.mealId===mealId&&e.start>=today));
+  list.forEach(e=>{if(e.mealId===mealId&&e.start<today&&e.end>=today) e.end=prevDayStr(today);});
+  save('food-mealprep',list);
   if($('pg-recipes').classList.contains('active')) renderRecipes();
   if($('pg-today').classList.contains('active')) renderToday();
 }
@@ -1528,20 +1619,22 @@ function clearMealprep(){
 function renderRecipes(){
   const el=$('recipes-list');
   let banner='';
-  const mp=load('food-mealprep',null);
-  if(mp&&td()<=mp.end){
-    const r=recipeLog.find(x=>x.id===mp.recipeId);
-    if(r) banner=`<div class="card" style="cursor:default;border-color:var(--ac)">
+  const hoy=td();
+  mealprepList().filter(e=>hoy>=e.start&&hoy<=e.end).forEach(e=>{
+    const r=recipeLog.find(x=>x.id===e.recipeId);
+    if(!r) return;
+    const slot=e.mealId==='almuerzo'?'mediodía':e.mealId==='cena'?'noche':e.mealId;
+    banner+=`<div class="card" style="cursor:default;border-color:${e.mealId==='cena'?'#a78bfa':'var(--ac)'}">
       <div class="row">
         <div style="flex:1">
-          <div class="text-xs text-mt fw-600">MEALPREP DE LA SEMANA</div>
+          <div class="text-xs text-mt fw-600">MEALPREP ${slot.toUpperCase()}</div>
           <div class="fw-700 mt-4">${esc(r.emoji||'🍲')} ${esc(r.name)}</div>
-          <div class="text-xs text-mt mt-4">Default de ${esc(mp.mealId)} hasta ${fd(mp.end)}</div>
+          <div class="text-xs text-mt mt-4">Default de ${esc(e.mealId)} hasta ${fd(e.end)}</div>
         </div>
-        <button class="icon-btn" onclick="clearMealprep()">✕</button>
+        <button class="icon-btn" onclick="clearMealprep('${esc(e.mealId)}')">✕</button>
       </div>
     </div>`;
-  }
+  });
   if(!recipeLog.length){
     el.innerHTML=banner+'<div class="text-sm text-mt" style="text-align:center;padding:20px 0;line-height:1.6">Sin recetas todavía.<br>Subí un screenshot de una receta y Gemini la traduce, arma ingredientes, pasos y macros por porción.</div>';
     return;
@@ -1690,8 +1783,8 @@ function pickRecipeDish(rid){
   log.meals[mealId]={custom:true,recipeId:r.id,name:(r.emoji||'📖')+' '+r.name,prot:r.prot||0,carbs:r.carbs||0,fat:r.fat||0};
   save("food-log",mealLog);
   window._recipePickCeleb=!wasComplete&&isDayComplete(activeDate)&&activeDate===td();
-  const mp=load('food-mealprep',null);
-  const mpVigente=mp&&mp.recipeId===r.id&&mp.mealId===mealId&&activeDate<=mp.end;
+  const cur=mealprepFor(mealId,activeDate);
+  const mpVigente=cur&&cur.r.id===r.id;
   if(!mpVigente&&(mealId==='almuerzo'||mealId==='cena')){
     $("modal-content").innerHTML=`<div style="text-align:center;padding:8px 0 4px">
         <div style="font-size:40px;margin-bottom:8px">${esc(r.emoji||'🍲')}</div>
