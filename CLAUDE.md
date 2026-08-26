@@ -73,7 +73,7 @@ Field guardado en custom meal: `dish` (nuevo) o `protein` (legacy backward compa
 | `pg-cal` | 📅 Calendario | Mes con colores (complete/partial/cheat). Barras superiores `.cal-mp` = rachas de mealprep (naranja mediodía / violeta noche, futuro incluido). Click día auto → `dayDetail(ds)` (modal: comidas ✓/✕/🔄, cheats, snacks, macros vs target, creatina, botón editar → `openDay`); día legacy → `openDay` directo. |
 | `pg-cheat` | 🍕 Cheat | Racha sin cheat, registrar cheat: presets argentinos (`CHEAT_PRESETS`, tap acumula nota+kcal) + kcal libre + botón ✨ Gemini (`estimateKcalAI(prefix)`, compartido con snacks — ids `{prefix}-input/-kcal/-ai-btn/-ai-out`; sobre `geminiCall`: cadena de fallback `GEMINI_MODELS` lite-first porque el free tier tira 503 de saturación por-modelo; 403 corta la cadena, otros errores pasan al siguiente). Con repregunta: si un dato cambia >±20% el estimado, la IA devuelve `pregunta`, el user responde inline (`{prefix}-ai-ans`) y se re-estima — 1 ronda máx (`window._aiFollowup`). Kcal vacío al confirmar → usa promedio histórico (`window._cheatDef`). |
 | `pg-progress` | 📊 Progreso | Peso + perfil + análisis 4 sem (TDEE, déficit, pérdida real vs esperada) + carga creatina. |
-| `pg-config` | (header gear) | Export/import JSON, borrar días, reset plans. |
+| `pg-config` | (header gear) | Export/import JSON, borrar días, reset plans, Gemini key, footer "app vNN". `exportFood()` marca `food-cfg.lastBackup`; `backupNudgeHtml()` muestra aviso en Hoy si nunca hubo backup o pasaron 30+ días. |
 | `pg-del` | (config →) | Multi-select borrar días del historial. |
 
 ## Streak + celebración
