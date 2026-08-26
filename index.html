@@ -253,7 +253,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="sec" style="padding-top:0">
     <button class="btn-out danger" onclick="resetPlans()">Resetear planes originales</button>
   </div>
-  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v36</div>
+  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v37</div>
 </div>
 
 <!-- ══ DELETE DAYS ══ -->
@@ -1097,6 +1097,7 @@ function renderAutoDay(){
     const _daysW=_lastW?Math.floor((new Date(td()+'T12:00:00Z')-new Date(_lastW.date+'T12:00:00Z'))/86400000):999;
     if(_daysW>=7) html+='<div style="margin-top:16px;padding:12px 14px;border-radius:12px;border:1px solid var(--yw);background:rgba(234,179,8,0.08);display:flex;align-items:center;justify-content:space-between;gap:10px"><span class="text-xs" style="color:var(--mt)">'+(_daysW<999?'Hace '+_daysW+' días sin pesarte':'Registrá tu peso para activar el análisis')+'</span><button class="btn-out" onclick="navTo(\'pg-progress\')" style="font-size:12px;padding:6px 12px;white-space:nowrap;border-color:var(--yw);color:var(--yw)">Registrar</button></div>';
   }
+  if(isToday) html+=backupNudgeHtml();
 
   html+=`<div class="flex gap-8 mt-20">
     <button class="btn-out" onclick="openSnackModal()" style="font-size:13px">🍎 + Snack</button>
@@ -1889,7 +1890,23 @@ function renderCheat(){
 }
 
 // ── Export / Import ──
+function backupNudgeHtml(){
+  const hasData=Object.keys(mealLog).length>0||load('food-weight',[]).length>0;
+  if(!hasData) return '';
+  const last=load('food-cfg',{}).lastBackup||null;
+  const days=last?Math.floor((new Date(td()+'T12:00:00Z')-new Date(last+'T12:00:00Z'))/86400000):null;
+  if(last&&days<30) return '';
+  const msg=last?`Hace ${days} días sin backup`:'Nunca exportaste tus datos';
+  return `<div style="margin-top:16px;padding:12px 14px;border-radius:12px;border:1px solid var(--yw);background:rgba(234,179,8,0.08);display:flex;align-items:center;justify-content:space-between;gap:10px">
+    <span class="text-xs" style="color:var(--mt);line-height:1.4">💾 ${msg} — todo vive en este navegador: si se limpia, se pierde</span>
+    <button class="btn-out" onclick="exportFood()" style="font-size:12px;padding:6px 12px;white-space:nowrap;border-color:var(--yw);color:var(--yw)">Exportar</button>
+  </div>`;
+}
+
 function exportFood(){
+  const _cfg=load('food-cfg',{});
+  _cfg.lastBackup=td();
+  save('food-cfg',_cfg);
   const data={
     version:3,
     exportDate:td(),
@@ -1913,6 +1930,7 @@ function exportFood(){
   a.href=url;a.download='comidas-backup-'+td()+'.json';
   document.body.appendChild(a);a.click();
   document.body.removeChild(a);URL.revokeObjectURL(url);
+  if($('pg-today').classList.contains('active')) renderToday();
 }
 
 function importFood(event){
