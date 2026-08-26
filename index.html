@@ -253,7 +253,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="sec" style="padding-top:0">
     <button class="btn-out danger" onclick="resetPlans()">Resetear planes originales</button>
   </div>
-  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v35</div>
+  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v36</div>
 </div>
 
 <!-- ══ DELETE DAYS ══ -->
@@ -1479,7 +1479,8 @@ function pickCheatDate(dateStr){
   html+='</div>';
   html+=`<div class="mb-12"><label class="label">¿Qué comiste?</label><input id="cheat-input" class="inp" placeholder="Ej: Pizza, helado..."></div>`;
   html+=`<div class="mb-12"><label class="label">Calorías aprox</label><input id="cheat-kcal" type="number" class="inp inp-num" placeholder="${window._cheatDef}"></div>`;
-  if(geminiKey()) html+='<button id="cheat-ai-btn" class="btn-out mb-12" onclick="estimateCheatKcal()" style="color:var(--ac);border-color:rgba(230,149,0,0.3)">✨ Estimar con IA</button>';
+  window._aiFollowup=null;
+  if(geminiKey()) html+='<button id="cheat-ai-btn" class="btn-out mb-12" onclick="estimateKcalAI(\'cheat\')" style="color:var(--ac);border-color:rgba(230,149,0,0.3)">✨ Estimar con IA</button>';
   html+='<div id="cheat-ai-out"></div>';
   html+='<button class="btn mb-12" onclick="confirmCheat()">Registrar</button>';
   html+='<button class="btn-out mb-12" onclick="renderCheatCal()">📅 Elegir otra fecha</button>';
@@ -1529,27 +1530,40 @@ async function geminiCall(parts,schema,validate){
   throw new Error(lastErr||'sin respuesta');
 }
 
-function geminiEstimate(note){
-  return geminiCall(
-    [{text:'Estimá las calorías totales de esta comida, con porciones típicas de Argentina. Si algo es ambiguo, asumí la porción estándar. Comida: "'+note+'"'}],
-    {type:'OBJECT',properties:{kcal:{type:'INTEGER'},detalle:{type:'STRING',description:'desglose muy breve por ítem, en español'}},required:['kcal','detalle']},
-    out=>isFinite(out.kcal)
-  );
-}
-
-async function estimateCheatKcal(){
-  const note=$("cheat-input").value.trim();
+// Estimador con repregunta: si un dato fácil cambia la estimación >±20%, la IA
+// devuelve "pregunta"; el user responde inline y se re-estima (1 ronda máx).
+async function estimateKcalAI(prefix){
+  const note=$(prefix+'-input').value.trim();
   if(!note){alert('Escribí qué comiste primero');return;}
-  const key=geminiKey();
-  if(!key) return;
-  const btn=$("cheat-ai-btn");
+  if(!geminiKey()) return;
+  const btn=$(prefix+'-ai-btn'), out=$(prefix+'-ai-out');
+  const fu=(window._aiFollowup&&window._aiFollowup.prefix===prefix)?window._aiFollowup:null;
+  const ansEl=$(prefix+'-ai-ans');
+  const ans=fu&&ansEl&&ansEl.value.trim()?ansEl.value.trim():'';
   btn.disabled=true;btn.textContent='✨ Estimando…';
   try{
-    const out=await geminiEstimate(note);
-    $("cheat-kcal").value=Math.round(out.kcal);
-    $("cheat-ai-out").innerHTML=`<div class="text-xs mb-12" style="color:var(--ac);line-height:1.5">✨ ~${Math.round(out.kcal)} kcal · ${esc(out.detalle)}</div>`;
+    const o=await geminiCall(
+      [{text:'Estimá las calorías totales de esta comida, con porciones típicas de Argentina. Comida: "'+note+'"'+
+        (ans?`\nLe preguntaste: "${fu.q}" y respondió: "${ans}". Con eso dá la estimación final, sin campo pregunta.`
+            :'\nSi UN solo dato fácil de responder (tamaño, frito/horno/air fryer, con/sin aderezo o queso, espesor, cantidad) cambiaría la estimación en más de ±20%, incluí el campo "pregunta" (una sola, corta, en español). Igual devolvé tu mejor estimación asumiendo lo típico.')}],
+      {type:'OBJECT',properties:{kcal:{type:'INTEGER'},detalle:{type:'STRING',description:'desglose muy breve por ítem, en español'},pregunta:{type:'STRING'}},required:['kcal','detalle']},
+      x=>isFinite(x.kcal)
+    );
+    $(prefix+'-kcal').value=Math.round(o.kcal);
+    let h=`<div class="text-xs mb-12" style="color:var(--ac);line-height:1.5">✨ ~${Math.round(o.kcal)} kcal · ${esc(o.detalle)}</div>`;
+    if(o.pregunta&&!ans){
+      window._aiFollowup={prefix,q:o.pregunta};
+      h+=`<div class="mb-12" style="background:rgba(230,149,0,0.06);border:1px solid rgba(230,149,0,0.25);border-radius:12px;padding:12px">
+        <div class="text-sm fw-700 mb-8">🤔 ${esc(o.pregunta)}</div>
+        <input id="${prefix}-ai-ans" class="inp" placeholder="Respondé acá..." style="margin-bottom:8px">
+        <button class="btn-out" onclick="estimateKcalAI('${prefix}')" style="font-size:13px;padding:10px">↻ Re-estimar con la respuesta</button>
+      </div>`;
+    } else {
+      window._aiFollowup=null;
+    }
+    out.innerHTML=h;
   }catch(e){
-    $("cheat-ai-out").innerHTML=`<div class="text-xs mb-12" style="color:var(--dn)">No pude estimar (${esc(e.message)}). Poné el número a mano.</div>`;
+    out.innerHTML=`<div class="text-xs mb-12" style="color:var(--dn)">No pude estimar (${esc(e.message)}). Poné el número a mano.</div>`;
   }
   btn.disabled=false;btn.textContent='✨ Estimar con IA';
 }
@@ -2010,7 +2024,10 @@ function openSnackModal(){
   let html='<div style="font-size:18px;font-weight:800;margin-bottom:6px">🍎 Snack extra</div>';
   html+='<div class="text-sm text-mt" style="margin-bottom:18px;line-height:1.4">Algo extra que no es del plan ni un cheat. Suma al consumo del día pero no cuenta como cheat.</div>';
   html+='<div class="mb-12"><label class="label">¿Qué?</label><input id="sn-input" class="inp" placeholder="Ej: banana, café con leche..."></div>';
-  html+='<div style="margin-bottom:18px"><label class="label">Calorías aprox</label><input id="sn-kcal" type="number" class="inp inp-num" placeholder="150" value="150"></div>';
+  html+='<div class="mb-12"><label class="label">Calorías aprox</label><input id="sn-kcal" type="number" class="inp inp-num" placeholder="150" value="150"></div>';
+  window._aiFollowup=null;
+  if(geminiKey()) html+='<button id="sn-ai-btn" class="btn-out mb-12" onclick="estimateKcalAI(\'sn\')" style="color:var(--ac);border-color:rgba(230,149,0,0.3)">✨ Estimar con IA</button>';
+  html+='<div id="sn-ai-out"></div>';
   html+='<button class="btn" style="margin-bottom:12px" onclick="saveSnack()">Registrar</button>';
   html+='<button class="btn-out" onclick="closeModal()">Cancelar</button>';
   $('modal-content').innerHTML=html;
