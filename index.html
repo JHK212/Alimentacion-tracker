@@ -253,7 +253,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="sec" style="padding-top:0">
     <button class="btn-out danger" onclick="resetPlans()">Resetear planes originales</button>
   </div>
-  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v37</div>
+  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v38</div>
 </div>
 
 <!-- ══ DELETE DAYS ══ -->
@@ -415,6 +415,23 @@ const CHEAT_PRESETS = [
   {e:'🍺', n:'Porrón / lata birra', k:200},
   {e:'🍷', n:'Copa de vino', k:120},
   {e:'🍫', n:'Chocolate (50g)', k:270},
+];
+
+// Snacks frecuentes: un tap los registra. Los proteicos primero — son los que
+// ganan la noche. Baja la fricción que hace que el picoteo quede sin registrar.
+const SNACK_PRESETS = [
+  {e:'🍮', n:'Yogur prote + ½ scoop', k:160},
+  {e:'🥤', n:'Batido whey (agua)', k:120},
+  {e:'🥚', n:'2 huevos duros', k:140},
+  {e:'🧁', n:'Mugcake chico', k:220},
+  {e:'🥜', n:'Banana + maní', k:140},
+  {e:'🍌', n:'Banana', k:105},
+  {e:'🍎', n:'Fruta', k:80},
+  {e:'🍿', n:'Pochoclo 30g', k:120},
+  {e:'🧀', n:'Queso port salut 30g', k:90},
+  {e:'🍫', n:'Choco amargo 10g', k:55},
+  {e:'☕', n:'Café con leche', k:90},
+  {e:'🍨', n:'Gelatina light', k:15},
 ];
 
 const LEGACY_PROTEINS = [
@@ -2041,8 +2058,17 @@ function deleteSelectedDays(){
 function openSnackModal(){
   let html='<div style="font-size:18px;font-weight:800;margin-bottom:6px">🍎 Snack extra</div>';
   html+='<div class="text-sm text-mt" style="margin-bottom:18px;line-height:1.4">Algo extra que no es del plan ni un cheat. Suma al consumo del día pero no cuenta como cheat.</div>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:14px">';
+  SNACK_PRESETS.forEach((p,i)=>{
+    html+=`<button onclick="addSnackPreset(${i})" style="background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:8px 4px;cursor:pointer;color:var(--tx);text-align:center">
+      <div style="font-size:16px">${p.e}</div>
+      <div class="text-xs" style="line-height:1.2;margin-top:2px">${p.n}</div>
+      <div class="text-xs text-mt mono">${p.k}</div>
+    </button>`;
+  });
+  html+='</div>';
   html+='<div class="mb-12"><label class="label">¿Qué?</label><input id="sn-input" class="inp" placeholder="Ej: banana, café con leche..."></div>';
-  html+='<div class="mb-12"><label class="label">Calorías aprox</label><input id="sn-kcal" type="number" class="inp inp-num" placeholder="150" value="150"></div>';
+  html+='<div class="mb-12"><label class="label">Calorías aprox</label><input id="sn-kcal" type="number" class="inp inp-num" placeholder="150"></div>';
   window._aiFollowup=null;
   if(geminiKey()) html+='<button id="sn-ai-btn" class="btn-out mb-12" onclick="estimateKcalAI(\'sn\')" style="color:var(--ac);border-color:rgba(230,149,0,0.3)">✨ Estimar con IA</button>';
   html+='<div id="sn-ai-out"></div>';
@@ -2051,6 +2077,14 @@ function openSnackModal(){
   $('modal-content').innerHTML=html;
   $('modal').classList.add('show');
   setTimeout(()=>{const i=$('sn-input');if(i)i.focus();},300);
+}
+
+function addSnackPreset(i){
+  const p=SNACK_PRESETS[i];
+  if(!p) return;
+  const ni=$('sn-input'), ki=$('sn-kcal');
+  ni.value=ni.value?ni.value+' + '+p.n:p.n;
+  ki.value=(parseInt(ki.value)||0)+p.k;
 }
 
 function saveSnack(){
