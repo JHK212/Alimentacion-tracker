@@ -34,11 +34,11 @@ App single-file. Trackeo comidas + cheats + peso + déficit. Personal de Joaco.
 | `food-plans` | Array scenarios: `rutina` (activo) + 4 legacy (`legacy:true`) |
 | `food-plans-rev` | Int. Última rev de migración aplicada |
 | `food-log` | `{YYYY-MM-DD: {scenario, meals: {mealId: true \| 'skipped' \| {custom, dish, side, prot, carbs, fat}}}}` |
-| `food-cheat` | `[{date, note, kcal}]` |
+| `food-cheat` | `[{date, note, kcal, time?}]` — `time` "HH:MM" desde v41 (prellena hora actual si la fecha es hoy); registros viejos sin `time` se renderizan igual |
 | `food-weight` | `[{date, kg}]` |
 | `food-profile` | `{altura, edad, sexo, factor}` |
 | `food-creatine-load` | `{start:"YYYY-MM-DD"}` o null (loading 5 días) |
-| `food-snacks` | `[{date, note, kcal}]` — extras no-cheat. Modal con `SNACK_PRESETS` (tap acumula nota+kcal, proteicos primero) + botón ✨ IA. El campo kcal arranca VACÍO para que los presets sumen bien. |
+| `food-snacks` | `[{date, note, kcal, time?}]` — extras no-cheat. `time` "HH:MM" desde v41. Modal con `SNACK_PRESETS` (tap acumula nota+kcal, proteicos primero) + botón ✨ IA. El campo kcal arranca VACÍO para que los presets sumen bien. |
 | `food-checkin` | `[{date, fuerza, energia, hambre, sueno, humor}]` — '+'/'='/'-' por campo, 1 por semana ISO |
 | `food-photo` | `[{date}]` — solo fecha, fotos viven en galería del celu |
 | `food-recipes` | `[{id, name, emoji, servings, prot, carbs, fat (por porción), ingredients:[str], steps:[str]}]` — screenshots NO se guardan, solo lo estructurado |
