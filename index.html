@@ -253,7 +253,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="sec" style="padding-top:0">
     <button class="btn-out danger" onclick="resetPlans()">Resetear planes originales</button>
   </div>
-  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v40</div>
+  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v41</div>
 </div>
 
 <!-- ══ DELETE DAYS ══ -->
@@ -532,6 +532,7 @@ function fd(d){try{return new Date(d+"T12:00:00").toLocaleDateString("es-AR",{da
 function fdLong(d){try{return new Date(d+"T12:00:00").toLocaleDateString("es-AR",{weekday:"long",day:"numeric",month:"long"});}catch{return d;}}
 function $(id){return document.getElementById(id);}
 function uid(){return Math.random().toString(36).slice(2,8);}
+function nowHM(){const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 
 function init(){
   scenarios=load("food-plans",DEFAULT_SCENARIOS);
@@ -1101,6 +1102,7 @@ function renderAutoDay(){
       const _gi=snackLog.indexOf(s);
       html+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd)22">
         <span style="font-size:16px">🍎</span>
+        <span class="mono text-mt" style="font-size:11px;min-width:36px">${esc(s.time||'')}</span>
         <span class="text-sm fw-600" style="flex:1">${esc(s.note)}</span>
         <span class="mono text-xs text-mt">${s.kcal} kcal</span>
         <button class="icon-btn" style="width:28px;height:28px;font-size:11px;color:var(--dn)" onclick="deleteSnack(${_gi})">✕</button>
@@ -1410,14 +1412,14 @@ function dayDetail(ds){
   const _ch=cheatLog.filter(c=>c.date===ds);
   _ch.forEach(c=>{
     html+=`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)22">
-      <span style="font-size:14px">🍕</span><span class="mono text-mt" style="font-size:10px;min-width:38px"></span>
+      <span style="font-size:14px">🍕</span><span class="mono text-mt" style="font-size:10px;min-width:38px">${esc(c.time||'')}</span>
       <span class="text-sm fw-600" style="flex:1;color:var(--dn)">${esc(c.note)}</span>
       <span class="mono text-xs text-mt">${c.kcal||0}</span>
     </div>`;
   });
   snackLog.filter(s=>s.date===ds).forEach(s=>{
     html+=`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd)22">
-      <span style="font-size:14px">🍎</span><span class="mono text-mt" style="font-size:10px;min-width:38px"></span>
+      <span style="font-size:14px">🍎</span><span class="mono text-mt" style="font-size:10px;min-width:38px">${esc(s.time||'')}</span>
       <span class="text-sm fw-600" style="flex:1">${esc(s.note)}</span>
       <span class="mono text-xs text-mt">${s.kcal||0}</span>
     </div>`;
@@ -1498,7 +1500,7 @@ function pickCheatDate(dateStr){
   });
   html+='</div>';
   html+=`<div class="mb-12"><label class="label">¿Qué comiste?</label><input id="cheat-input" class="inp" placeholder="Ej: Pizza, helado..."></div>`;
-  html+=`<div class="mb-12"><label class="label">Calorías aprox</label><input id="cheat-kcal" type="number" class="inp inp-num" placeholder="${window._cheatDef}"></div>`;
+  html+=`<div class="flex gap-8 mb-12"><div class="flex-1" style="flex:2"><label class="label">Calorías aprox</label><input id="cheat-kcal" type="number" class="inp inp-num" placeholder="${window._cheatDef}"></div><div class="flex-1"><label class="label">Hora</label><input id="cheat-time" type="time" value="${dateStr===td()?nowHM():'13:00'}" class="inp" style="font-family:var(--fm)"></div></div>`;
   window._aiFollowup=null;
   if(geminiKey()) html+='<button id="cheat-ai-btn" class="btn-out mb-12" onclick="estimateKcalAI(\'cheat\')" style="color:var(--ac);border-color:rgba(230,149,0,0.3)">✨ Estimar con IA</button>';
   html+='<div id="cheat-ai-out"></div>';
@@ -1854,7 +1856,8 @@ function confirmCheat(){
   const note=$("cheat-input").value||"Cheat meal";
   const kcal=parseInt($("cheat-kcal").value)||window._cheatDef||0;
   const date=window._cheatDate||td();
-  cheatLog.push({date:date,note:note,kcal:kcal});
+  const _t=$("cheat-time");
+  cheatLog.push({date:date,note:note,kcal:kcal,time:(_t&&_t.value)||''});
   save("food-cheat",cheatLog);
   const wkKcal=cheatKcalInWeek(date);
   const budget=cheatKcalBudget();
@@ -1904,7 +1907,7 @@ function renderCheat(){
   // History
   const sorted=[...cheatLog].sort((a,b)=>b.date.localeCompare(a.date));
   $("cheat-history").innerHTML=sorted.length?sorted.map((c,i)=>
-    `<div class="card" style="cursor:default"><div class="row"><div><div class="fw-700" style="font-size:14px">🍕 ${esc(c.note)}</div><div class="text-xs text-mt mt-4">${fd(c.date)}${c.kcal?' · <span class="mono">'+c.kcal+' kcal</span>':''}</div></div><button class="icon-btn" style="width:32px;height:32px;font-size:12px;color:var(--dn)" onclick="event.stopPropagation();deleteCheat(${cheatLog.indexOf(c)})">✕</button></div></div>`
+    `<div class="card" style="cursor:default"><div class="row"><div><div class="fw-700" style="font-size:14px">🍕 ${esc(c.note)}</div><div class="text-xs text-mt mt-4">${fd(c.date)}${c.time?' · <span class="mono">'+esc(c.time)+'</span>':''}${c.kcal?' · <span class="mono">'+c.kcal+' kcal</span>':''}</div></div><button class="icon-btn" style="width:32px;height:32px;font-size:12px;color:var(--dn)" onclick="event.stopPropagation();deleteCheat(${cheatLog.indexOf(c)})">✕</button></div></div>`
   ).join(''):'<div class="text-sm text-mt">Sin cheats registrados. ¡Bien!</div>';
 }
 
@@ -2070,7 +2073,7 @@ function openSnackModal(){
   });
   html+='</div>';
   html+='<div class="mb-12"><label class="label">¿Qué?</label><input id="sn-input" class="inp" placeholder="Ej: banana, café con leche..."></div>';
-  html+='<div class="mb-12"><label class="label">Calorías aprox</label><input id="sn-kcal" type="number" class="inp inp-num" placeholder="150"></div>';
+  html+='<div class="flex gap-8 mb-12"><div class="flex-1" style="flex:2"><label class="label">Calorías aprox</label><input id="sn-kcal" type="number" class="inp inp-num" placeholder="150"></div><div class="flex-1"><label class="label">Hora</label><input id="sn-time" type="time" value="'+(activeDate===td()?nowHM():'21:00')+'" class="inp" style="font-family:var(--fm)"></div></div>';
   window._aiFollowup=null;
   if(geminiKey()) html+='<button id="sn-ai-btn" class="btn-out mb-12" onclick="estimateKcalAI(\'sn\')" style="color:var(--ac);border-color:rgba(230,149,0,0.3)">✨ Estimar con IA</button>';
   html+='<div id="sn-ai-out"></div>';
@@ -2093,7 +2096,8 @@ function saveSnack(){
   const note=($('sn-input').value||'Snack').trim();
   const kcal=parseInt($('sn-kcal').value)||0;
   if(kcal<=0){alert('Indicá calorías aproximadas');return;}
-  snackLog.push({date:activeDate,note,kcal});
+  const _t=$('sn-time');
+  snackLog.push({date:activeDate,note,kcal,time:(_t&&_t.value)||''});
   save('food-snacks',snackLog);
   closeModal();
   renderToday();
