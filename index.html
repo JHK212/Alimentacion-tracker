@@ -254,7 +254,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="sec" style="padding-top:0">
     <button class="btn-out danger" onclick="resetPlans()">Resetear planes originales</button>
   </div>
-  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v42</div>
+  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v43</div>
 </div>
 
 <!-- ══ DELETE DAYS ══ -->
@@ -2474,10 +2474,13 @@ function analyzeWindow(daysBack){
     cursor.setUTCDate(cursor.getUTCDate()-1);
   }
   let planKcal=0, loggedCount=0;
+  // Los promedios se dividen por los días CON datos, no por la ventana entera:
+  // mezclar denominadores diluía los cheats y subestimaba el consumo.
+  const counted=new Set();
   dates.forEach(d=>{
     if(isAutoDay(d)){
       // día auto: siempre cuenta; consumo = rutina menos salteos, con reemplazos
-      loggedCount++;
+      loggedCount++;counted.add(d);
       const log=mealLog[d];
       rutinaScn().meals.forEach(m=>{
         const v=log&&log.meals?log.meals[m.id]:undefined;
@@ -2490,19 +2493,19 @@ function analyzeWindow(daysBack){
     if(!log||!log.scenario) return;
     const scn=scenarios.find(s=>s.id===log.scenario);
     if(!scn) return;
-    loggedCount++;
+    loggedCount++;counted.add(d);
     scn.meals.forEach(m=>{
       const v=log.meals[m.id];
       if(isMealDone(v)) planKcal+=mealKcal(v&&v.custom?v:m);
     });
   });
-  const cheats=cheatLog.filter(c=>dates.includes(c.date));
+  const cheats=cheatLog.filter(c=>counted.has(c.date));
   const cheatKcal=cheats.reduce((s,c)=>s+(c.kcal||0),0);
-  const snacks=snackLog.filter(s=>dates.includes(s.date));
+  const snacks=snackLog.filter(s=>counted.has(s.date));
   const snackKcal=snacks.reduce((s,n)=>s+(n.kcal||0),0);
   const planAvg=loggedCount>0?planKcal/loggedCount:0;
-  const cheatAvg=cheatKcal/daysBack;
-  const snackAvg=snackKcal/daysBack;
+  const cheatAvg=loggedCount>0?cheatKcal/loggedCount:0;
+  const snackAvg=loggedCount>0?snackKcal/loggedCount:0;
   const avgConsumed=planAvg+cheatAvg+snackAvg;
   const tdee=calcTDEE();
   const deficit=tdee?tdee-avgConsumed:null;
