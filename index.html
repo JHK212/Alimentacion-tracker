@@ -229,6 +229,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   </div>
   <div class="sec">
     <div class="sec-title">Datos</div>
+    <button class="btn-out" onclick="openAnalysisText()" style="margin-bottom:12px">📋 Copiar resumen para análisis</button>
     <button class="btn-out" onclick="exportFood()" style="margin-bottom:12px">📤 Exportar mis datos</button>
     <label class="btn-out" style="display:block;text-align:center;cursor:pointer;color:var(--tx)">📥 Importar datos
       <input type="file" accept=".json" onchange="importFood(event)" style="display:none">
@@ -253,7 +254,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="sec" style="padding-top:0">
     <button class="btn-out danger" onclick="resetPlans()">Resetear planes originales</button>
   </div>
-  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v41</div>
+  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v42</div>
 </div>
 
 <!-- ══ DELETE DAYS ══ -->
@@ -1909,6 +1910,82 @@ function renderCheat(){
   $("cheat-history").innerHTML=sorted.length?sorted.map((c,i)=>
     `<div class="card" style="cursor:default"><div class="row"><div><div class="fw-700" style="font-size:14px">🍕 ${esc(c.note)}</div><div class="text-xs text-mt mt-4">${fd(c.date)}${c.time?' · <span class="mono">'+esc(c.time)+'</span>':''}${c.kcal?' · <span class="mono">'+c.kcal+' kcal</span>':''}</div></div><button class="icon-btn" style="width:32px;height:32px;font-size:12px;color:var(--dn)" onclick="event.stopPropagation();deleteCheat(${cheatLog.indexOf(c)})">✕</button></div></div>`
   ).join(''):'<div class="text-sm text-mt">Sin cheats registrados. ¡Bien!</div>';
+}
+
+// ── Resumen de texto para análisis externo ──
+function analysisText(days){
+  days=days||28;
+  const today=td();
+  const dates=[];
+  const cur=new Date(today+'T12:00:00Z');
+  for(let i=0;i<days;i++){dates.push(cur.toISOString().slice(0,10));cur.setUTCDate(cur.getUTCDate()-1);}
+  dates.reverse();
+  const ws=load('food-weight',[]);
+  const scn=rutinaScn();
+  const tg=scnMacros(scn);
+  let out=`RESUMEN ${days} DIAS (hasta ${today})\nPlan base: ${tg.kcal} kcal · ${tg.p}p/${tg.c}c/${tg.f}f\n`;
+  scn.meals.forEach(m=>{out+=`  ${m.time} ${m.name}: ${mealKcal(m)}\n`;});
+  out+='\n';
+  let total=0,nDays=0,chK=0,chN=0,snK=0,snN=0;
+  dates.forEach(d=>{
+    if(d>today) return;
+    const log=mealLog[d];
+    if(!isAutoDay(d)&&!log) return;
+    const k=dayKcal(d);
+    total+=k;nDays++;
+    let dow='';
+    try{dow=new Date(d+'T12:00:00').toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');}catch(e){}
+    let line=`${d.slice(8)}/${d.slice(5,7)} ${dow} | ${k}`;
+    const exc=[];
+    if(isAutoDay(d)) scn.meals.forEach(m=>{
+      const v=log&&log.meals?log.meals[m.id]:undefined;
+      const mp=mealprepFor(m.id,d);
+      if(v==='skipped') exc.push(m.name+' SALTEADA');
+      else if(v&&v.custom) exc.push(m.name+'→'+customMealLabel(v)+' '+mealKcal(v));
+      else if(mp) exc.push(m.name+'→mealprep '+mp.r.name+' '+mealKcal(effMeal(m,d)));
+    });
+    if(exc.length) line+=' | '+exc.join(' · ');
+    cheatLog.filter(c=>c.date===d).forEach(c=>{line+=` | CHEAT ${c.time||'??'} ${c.note} ${c.kcal||0}`;chK+=c.kcal||0;chN++;});
+    (snackLog||[]).filter(s=>s.date===d).forEach(s=>{line+=` | snack ${s.time||'??'} ${s.note} ${s.kcal||0}`;snK+=s.kcal||0;snN++;});
+    const w=ws.find(x=>x.date===d);
+    if(w) line+=` | PESO ${w.kg}`;
+    if(log&&log.creatine===false) line+=' | sin creatina';
+    out+=line+'\n';
+  });
+  out+=`\nTOTAL: ${nDays} dias · ${total} kcal · prom ${nDays?Math.round(total/nDays):0}/dia\n`;
+  out+=`Cheats: ${chN} (${chK} kcal) · Snacks: ${snN} (${snK} kcal)\n`;
+  const tr=calcWeightTrend();
+  if(tr!==null) out+=`Tendencia peso: ${tr.toFixed(2)} kg/sem\n`;
+  const a=analyzeWindow(28);
+  if(a.adjustedTDEE) out+=`TDEE medido: ${a.adjustedTDEE} kcal/dia\n`;
+  return out;
+}
+
+function openAnalysisText(){
+  const txt=analysisText(28);
+  let html='<div style="font-size:18px;font-weight:800;margin-bottom:4px">📋 Resumen para análisis</div>';
+  html+='<div class="text-sm text-mt mb-12">Copialo y pegalo donde lo quieras analizar</div>';
+  html+=`<textarea id="an-txt" readonly style="width:100%;height:38vh;background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:12px;color:var(--tx);font-family:var(--fm);font-size:10px;line-height:1.5;box-sizing:border-box;outline:none">${esc(txt)}</textarea>`;
+  html+='<button id="an-copy" class="btn mt-12 mb-12" onclick="copyAnalysisText()">📋 Copiar todo</button>';
+  html+='<button class="btn-out" onclick="closeModal()">Cerrar</button>';
+  $('modal-content').innerHTML=html;
+  $('modal').classList.add('show');
+}
+
+function copyAnalysisText(){
+  const ta=$('an-txt'), btn=$('an-copy');
+  const ok=()=>{btn.textContent='✓ Copiado';setTimeout(()=>{if(btn)btn.textContent='📋 Copiar todo';},2000);};
+  const manual=()=>{ta.focus();ta.select();btn.textContent='Copiá con el teclado ↑';};
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(ta.value).then(ok).catch(()=>{
+        try{ta.select();document.execCommand('copy')?ok():manual();}catch(e){manual();}
+      });
+    } else {
+      ta.select();
+      try{document.execCommand('copy')?ok():manual();}catch(e){manual();}
+    }
+  }catch(e){manual();}
 }
 
 // ── Export / Import ──
