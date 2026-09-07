@@ -242,10 +242,14 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
     <div class="text-xs text-mt mt-4">Total de kcal de cheats por semana. Dos alfajores ≠ dos McDonald's. Default 1500.</div>
   </div>
   <div class="sec" style="padding-top:0">
-    <div class="sec-title">Estimador IA de cheats</div>
-    <label class="label">Gemini API key</label>
-    <input id="cfg-gemini-key" type="password" autocomplete="off" class="inp" onchange="saveGeminiKey()" placeholder="AIza...">
-    <div class="text-xs text-mt mt-4" style="line-height:1.5">Gratis en aistudio.google.com → Get API key. Se guarda solo en este dispositivo. Con key cargada aparece el botón ✨ al registrar un cheat.</div>
+    <div class="sec-title">Estimador IA</div>
+    <label class="label">API key</label>
+    <input id="cfg-gemini-key" type="password" autocomplete="off" class="inp" onchange="saveGeminiKey()" placeholder="sk-or-... o AIza...">
+    <div class="text-xs text-mt mt-4" style="line-height:1.5">Acepta OpenRouter (<span class="mono">sk-or-…</span>) o Gemini (<span class="mono">AIza…</span> / <span class="mono">AQ.…</span>). Se detecta sola y se guarda solo en este dispositivo.</div>
+    <div class="mt-12"><label class="label">Modelo (solo OpenRouter)</label>
+    <input id="cfg-or-model" class="inp mono" onchange="saveGeminiKey()" placeholder="anthropic/claude-haiku-latest" style="font-size:14px">
+    <div class="text-xs text-mt mt-4" style="line-height:1.5">Vacío usa <span class="mono">anthropic/claude-haiku-latest</span>. Si falla, prueba otros automáticamente.</div></div>
+    <div class="text-xs mt-12" style="color:var(--ac)">Activo: <span id="cfg-ai-prov" class="mono">sin key</span></div>
   </div>
   <div class="sec" style="padding-top:0">
     <div class="sec-title">Historial</div>
@@ -254,7 +258,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="sec" style="padding-top:0">
     <button class="btn-out danger" onclick="resetPlans()">Resetear planes originales</button>
   </div>
-  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v44</div>
+  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v45</div>
 </div>
 
 <!-- ══ DELETE DAYS ══ -->
@@ -612,7 +616,9 @@ function navTo(id){
   if(id==='pg-progress') renderProgress();
   if(id==='pg-config'){
     const i=$('cfg-cheat-budget');if(i)i.value=cheatKcalBudget();
-    const g=$('cfg-gemini-key');if(g)g.value=geminiKey();
+    const g=$('cfg-gemini-key');if(g)g.value=aiKey();
+    const gm=$('cfg-or-model');if(gm)gm.value=orModel();
+    const gp=$('cfg-ai-prov');if(gp)gp.textContent=aiProviderLabel()||'sin key';
   }
 }
 
@@ -1508,7 +1514,7 @@ function pickCheatDate(dateStr){
   html+=`<div class="mb-12"><label class="label">¿Qué comiste?</label><input id="cheat-input" class="inp" placeholder="Ej: Pizza, helado..."></div>`;
   html+=`<div class="flex gap-8 mb-12"><div class="flex-1" style="flex:2"><label class="label">Calorías aprox</label><input id="cheat-kcal" type="number" class="inp inp-num" placeholder="${window._cheatDef}"></div><div class="flex-1"><label class="label">Hora</label><input id="cheat-time" type="time" value="${dateStr===td()?nowHM():'13:00'}" class="inp" style="font-family:var(--fm)"></div></div>`;
   window._aiFollowup=null;
-  if(geminiKey()) html+='<button id="cheat-ai-btn" class="btn-out mb-12" onclick="estimateKcalAI(\'cheat\')" style="color:var(--ac);border-color:rgba(230,149,0,0.3)">✨ Estimar con IA</button>';
+  if(aiKey()) html+='<button id="cheat-ai-btn" class="btn-out mb-12" onclick="estimateKcalAI(\'cheat\')" style="color:var(--ac);border-color:rgba(230,149,0,0.3)">✨ Estimar con IA</button>';
   html+='<div id="cheat-ai-out"></div>';
   html+='<button class="btn mb-12" onclick="confirmCheat()">Registrar</button>';
   html+='<button class="btn-out mb-12" onclick="renderCheatCal()">📅 Elegir otra fecha</button>';
@@ -1524,14 +1530,73 @@ function addCheatPreset(i){
   ki.value=(parseInt(ki.value)||0)+p.k;
 }
 
-// ── Estimador IA (Gemini free tier, key personal en localStorage) ──
-// Cadena de fallback: los 503 de saturación son por-modelo, los lite se saturan menos.
+// ── Estimador IA ──
+// Soporta dos proveedores según la key que haya cargada: OpenRouter (sk-or...) o
+// Gemini directo. Cadena de fallback en los dos: los 503 son por-modelo.
 const GEMINI_MODELS=['gemini-flash-lite-latest','gemini-flash-latest','gemini-2.5-flash-lite','gemini-2.5-flash'];
-function geminiKey(){return (load('food-cfg',{}).geminiKey||'').trim();}
+const OR_MODELS=['anthropic/claude-haiku-latest','google/gemini-flash-latest','google/gemini-3.8-flash'];
+const OR_MODEL_DEFAULT='anthropic/claude-haiku-latest';
 
-async function geminiCall(parts,schema,validate){
-  const key=geminiKey();
-  if(!key) throw new Error('sin API key (Config)');
+function aiKey(){return (load('food-cfg',{}).geminiKey||'').trim();}
+function isOpenRouter(k){return /^sk-or/i.test(k||'');}
+function orModel(){return (load('food-cfg',{}).orModel||'').trim()||OR_MODEL_DEFAULT;}
+function aiProviderLabel(){const k=aiKey();return !k?'':isOpenRouter(k)?'OpenRouter · '+orModel():'Gemini';}
+
+// Gemini usa tipos en MAYÚSCULAS; JSON Schema estándar los quiere en minúscula.
+function schemaToStd(s){
+  if(!s||typeof s!=='object') return s;
+  const o={};
+  Object.keys(s).forEach(k=>{
+    if(k==='type') o.type=String(s[k]).toLowerCase();
+    else if(k==='properties'){o.properties={};Object.keys(s[k]).forEach(p=>{o.properties[p]=schemaToStd(s[k][p]);});}
+    else if(k==='items') o.items=schemaToStd(s[k]);
+    else o[k]=s[k];
+  });
+  return o;
+}
+
+function geminiCall(parts,schema,validate){
+  const key=aiKey();
+  if(!key) return Promise.reject(new Error('sin API key (Config)'));
+  return isOpenRouter(key)?orCall(key,parts,schema,validate):gemCall(key,parts,schema,validate);
+}
+
+async function orCall(key,parts,schema,validate){
+  const content=parts.map(p=>p.inline_data
+    ?{type:'image_url',image_url:{url:'data:'+p.inline_data.mime_type+';base64,'+p.inline_data.data}}
+    :{type:'text',text:p.text});
+  const first=orModel();
+  const models=[first,...OR_MODELS.filter(m=>m!==first)];
+  let lastErr='';
+  for(const model of models){
+    try{
+      const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+        body:JSON.stringify({
+          model,
+          messages:[{role:'user',content}],
+          response_format:{type:'json_schema',json_schema:{name:'respuesta',schema:schemaToStd(schema)}}
+        })
+      });
+      if(r.status===401||r.status===403){throw {fatal:true,msg:'key de OpenRouter inválida o sin crédito'};}
+      if(!r.ok){lastErr='HTTP '+r.status;continue;}
+      const data=await r.json();
+      const txt=data&&data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content;
+      if(!txt){lastErr='respuesta vacía';continue;}
+      const out=JSON.parse(txt);
+      if(out&&(!validate||validate(out))) return out;
+      lastErr='respuesta inválida';
+    }catch(e){
+      if(e.fatal) throw new Error(e.msg);
+      lastErr=e.message||lastErr;
+    }
+  }
+  if(/HTTP (503|429)/.test(lastErr)) throw new Error('modelos saturados, reintentá en unos minutos');
+  throw new Error(lastErr||'sin respuesta');
+}
+
+async function gemCall(key,parts,schema,validate){
   let lastErr='';
   for(const model of GEMINI_MODELS){
     try{
@@ -1563,7 +1628,7 @@ async function geminiCall(parts,schema,validate){
 async function estimateKcalAI(prefix){
   const note=$(prefix+'-input').value.trim();
   if(!note){alert('Escribí qué comiste primero');return;}
-  if(!geminiKey()) return;
+  if(!aiKey()) return;
   const btn=$(prefix+'-ai-btn'), out=$(prefix+'-ai-out');
   const fu=(window._aiFollowup&&window._aiFollowup.prefix===prefix)?window._aiFollowup:null;
   const ansEl=$(prefix+'-ai-ans');
@@ -1599,7 +1664,11 @@ async function estimateKcalAI(prefix){
 function saveGeminiKey(){
   const cfg=load('food-cfg',{});
   cfg.geminiKey=$('cfg-gemini-key').value.trim();
+  const m=$('cfg-or-model');
+  if(m) cfg.orModel=m.value.trim();
   save('food-cfg',cfg);
+  const p=$('cfg-ai-prov');
+  if(p) p.textContent=aiProviderLabel()||'sin key';
 }
 
 // ── Recetas ──
@@ -1800,7 +1869,7 @@ async function importRecipePhoto(event){
   const file=event.target.files[0];
   event.target.value='';
   if(!file) return;
-  if(!geminiKey()){alert('Cargá tu Gemini API key en Config (⚙) para importar screenshots');return;}
+  if(!aiKey()){alert('Cargá tu API key en Config (⚙) para importar screenshots');return;}
   $('modal-content').innerHTML='<div style="text-align:center;padding:30px 0"><div style="font-size:40px;margin-bottom:12px">📷✨</div><div class="fw-700">Leyendo la receta…</div><div class="text-xs text-mt mt-8">Traduce, estructura y calcula macros por porción</div></div>';
   $('modal').classList.add('show');
   try{
@@ -2157,7 +2226,7 @@ function openSnackModal(){
   html+='<div class="mb-12"><label class="label">¿Qué?</label><input id="sn-input" class="inp" placeholder="Ej: banana, café con leche..."></div>';
   html+='<div class="flex gap-8 mb-12"><div class="flex-1" style="flex:2"><label class="label">Calorías aprox</label><input id="sn-kcal" type="number" class="inp inp-num" placeholder="150"></div><div class="flex-1"><label class="label">Hora</label><input id="sn-time" type="time" value="'+(activeDate===td()?nowHM():'21:00')+'" class="inp" style="font-family:var(--fm)"></div></div>';
   window._aiFollowup=null;
-  if(geminiKey()) html+='<button id="sn-ai-btn" class="btn-out mb-12" onclick="estimateKcalAI(\'sn\')" style="color:var(--ac);border-color:rgba(230,149,0,0.3)">✨ Estimar con IA</button>';
+  if(aiKey()) html+='<button id="sn-ai-btn" class="btn-out mb-12" onclick="estimateKcalAI(\'sn\')" style="color:var(--ac);border-color:rgba(230,149,0,0.3)">✨ Estimar con IA</button>';
   html+='<div id="sn-ai-out"></div>';
   html+='<button class="btn" style="margin-bottom:12px" onclick="saveSnack()">Registrar</button>';
   html+='<button class="btn-out" onclick="closeModal()">Cancelar</button>';

@@ -16,7 +16,7 @@ App single-file. Trackeo comidas + cheats + peso + déficit. Personal de Joaco.
 - PWA: `index.html` + `sw.js`. Manifest e icon generados runtime (canvas/blob).
 - Mobile-first, max-width 480px. Tema dark.
 - CDN único: Google Fonts (DM Sans + JetBrains Mono).
-- Única llamada externa runtime: Gemini API (estimador de kcal en cheats, POST — el SW no la cachea). Key personal del user en `food-cfg.geminiKey` (localStorage), nunca en el repo. Sin key el botón ✨ no se renderiza y todo funciona manual.
+- Única llamada externa runtime: estimador de kcal / lectura de recetas (POST — el SW no la cachea). Dos proveedores según la key en `food-cfg.geminiKey` (localStorage, nunca en el repo): **OpenRouter** si empieza con `sk-or` (modelo en `food-cfg.orModel`, default `anthropic/claude-haiku-latest`), **Gemini** en cualquier otro caso. `geminiCall()` despacha a `orCall`/`gemCall`; ambos con cadena de fallback de modelos. `schemaToStd()` convierte el schema estilo Gemini (tipos en MAYÚSCULA) a JSON Schema estándar para OpenRouter. Sin key el botón ✨ no se renderiza y todo funciona manual.
 - Persistencia: localStorage. Sin auth.
 
 ## Repo
