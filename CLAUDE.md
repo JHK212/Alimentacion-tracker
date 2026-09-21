@@ -33,7 +33,7 @@ App single-file. Trackeo comidas + cheats + peso + déficit. Personal de Joaco.
 |---|---|
 | `food-plans` | Array scenarios: `rutina` (activo) + 4 legacy (`legacy:true`) |
 | `food-plans-rev` | Int. Última rev de migración aplicada |
-| `food-log` | `{YYYY-MM-DD: {scenario, meals: {mealId: true \| 'skipped' \| {custom, dish, side, prot, carbs, fat}}}}` |
+| `food-log` | `{YYYY-MM-DD: {scenario, unknown?, creatine?, meals: {mealId: true \| 'skipped' \| {custom, dish, side, prot, carbs, fat}}}}`. `unknown:true` = "no sé qué comí": `isUnknownDay()` lo excluye de `dayKcal`, `dayMacros`, `analyzeWindow` y adherencia, y `getDayStatus` devuelve `'unknown'`. **Necesario porque en tracking por excepción un día sin registro cuenta como plan cumplido**, lo que sesgaría el consumo hacia abajo. |
 | `food-cheat` | `[{date, note, kcal, time?}]` — `time` "HH:MM" desde v41 (prellena hora actual si la fecha es hoy); registros viejos sin `time` se renderizan igual |
 | `food-weight` | `[{date, kg}]` |
 | `food-profile` | `{altura, edad, sexo, factor}` |
