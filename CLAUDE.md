@@ -11,6 +11,24 @@ App single-file. Trackeo comidas + cheats + peso + déficit. Personal de Joaco.
 - `analyzeWindow`: todo día auto cuenta como "logged" con consumo = rutina − salteos + reemplazos. Completeness sube sola con el tiempo.
 - Streak ahora = días sin saltear comida (crece sin abrir la app; by design). `celebrateDay` casi no dispara en días auto (día ya nace completo).
 
+## Confirmación de días fantasma (v48, desde 2026-09-22)
+
+**Por qué existe:** el tracking por excepción tenía un agujero que corrompió el análisis de sept 2026 — olvidarse de abrir la app y cumplir perfecto eran indistinguibles. En el resumen de 28 días aparecieron ~4 "días fantasma" (1768 kcal clavado, cero interacción) contados como plan cumplido → ingesta promedio subestimada → TDEE medido ~2139 cuando el real estimado por fórmula es 2500-2800. Decisión con Joaco: **el silencio ya no es cumplimiento; un día pasado cuenta recién cuando él lo dice.**
+
+**Mecánica:**
+- `CONFIRM_START='2026-09-22'` (junto a `isUnknownDay`). Días `AUTO_START ≤ d < CONFIRM_START` conservan la semántica vieja (silencio = cumplido) para no invalidar el historial retroactivamente. NO mover esta fecha.
+- `dayTouched(ds)`: hay señal del usuario ese día = entrada en `food-log` con `meals` no vacío, `unknown`, `confirmed` o `creatine` definido, O cheat/snack con esa fecha. **El pesaje NO cuenta como touch a propósito**: con pesaje diario (el objetivo) todos los días quedarían auto-confirmados y la confirmación no existiría.
+- `isPendingDay(ds)` = auto ∧ `>=CONFIRM_START` ∧ `< td()` ∧ `!dayTouched`. Hoy nunca es pending (día en curso).
+- `pendingDays()`: escanea 14 días hacia atrás, devuelve pendientes viejo→nuevo.
+- **UI:** `renderAutoDay` (solo cuando `activeDate===td()`) muestra hasta 3 cards amarillas arriba de todo, una por día pendiente: `✓ Plan tal cual` → `confirmDayPlan(ds)` escribe `{confirmed:true}` en `food-log[ds]` · `✎ Hubo cambios` → `pendingOpenDay(ds)` navega al día (loguear la excepción lo convierte en touched) · `? No recuerdo` → `pendingMarkUnknown(ds)` escribe `{unknown:true}`. Si hay >3, línea "+N días más sin confirmar".
+- **Análisis:** `analyzeWindow` excluye pending igual que unknown (`if(isPendingDay(d)) return;`). Consecuencia: si Joaco ignora las cards, esos días desaparecen del denominador — honesto pero reduce la muestra. `dayKcal`/`getDayStatus`/calendario NO distinguen pending (muestran el día como cumplido); es una inconsistencia visual transitoria aceptada para no tocar medio render — si molesta, el fix va en `getDayStatus`.
+- Key nueva en `food-log[ds]`: `confirmed:true` (conviven con `unknown`, `creatine`, `meals`).
+
+## Pesaje + estimador (también v48)
+
+- **Nudge de pesaje**: antes solo aparecía de mañana (<12h BsAs) + un aviso laxo a los 7 días (Joaco estuvo 8 días sin pesarse y no lo vio). Ahora la card en `renderAutoDay` aparece **todo el día** mientras no haya pesaje de hoy: de mañana dice "Pesate en ayunas" (borde azul), después "Hoy no te pesaste" (borde neutro). El bloque viejo de 7 días se eliminó de `renderAutoDay` (queda una copia en el branch legacy de `renderToday` — inalcanzable para hoy, no tocar).
+- **Estimador ✨ sesgado al techo**: el prompt de `estimateKcalAI` ahora pide el extremo ALTO del rango realista. WHY: la evidencia de subregistro de comida fuera de casa es 20-40% sistemático hacia abajo; estimar el techo corrige el sesgo en vez de agregarlo. Si Joaco reporta que los números le parecen altos, ese es el comportamiento esperado, no un bug.
+
 ## Stack
 - HTML+CSS+JS vanilla. ES2020+. Sin frameworks, sin build, sin deps.
 - PWA: `index.html` + `sw.js`. Manifest e icon generados runtime (canvas/blob).
