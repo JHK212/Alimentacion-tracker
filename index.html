@@ -260,7 +260,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="sec" style="padding-top:0">
     <button class="btn-out danger" onclick="resetPlans()">Resetear planes originales</button>
   </div>
-  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v48</div>
+  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v49</div>
 </div>
 
 <!-- ══ DELETE DAYS ══ -->
@@ -299,7 +299,20 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
 // Rutina única (ago 2026). Tracking por excepción: día sin registro = rutina cumplida.
 // alts = variantes con macros propios, elegibles desde la comida sin pasar por el catálogo.
 const DEFAULT_SCENARIOS = [
-  { id:"rutina", label:"🍽️ Rutina", short:"Rutina",
+  { id:"rutina-if", label:"🍽️ Rutina IF", short:"Rutina IF",
+    meals:[
+      {id:"post",time:"10:00",icon:"🥤",name:"Post-entreno",desc:"1 scoop whey en agua. Días sin entreno: tomalo igual o marcá salteado (un tap)",prot:25,carbs:2,fat:1,optional:true},
+      {id:"almuerzo",time:"12:30",icon:"🍲",name:"Mealprep",desc:"220g cuadrada magra picada cruda + 200g boniato + cebolla, morrón y chauchas",prot:51,carbs:47,fat:11,flexible:true,
+       parts:[{name:"Cuadrada picada (220g)",prot:46,carbs:0,fat:11},{name:"Boniato (200g)",prot:3,carbs:40,fat:0},{name:"Verduras",prot:2,carbs:7,fat:0}]},
+      {id:"merienda",time:"17:30",icon:"🧁",name:"Merienda",desc:"Mugcake proteico (30g harina almendra + 1 scoop whey + 2 huevos) + yogur griego proteico (150g) + 1 scoop whey",prot:81,carbs:16,fat:30,
+       alts:[{name:"🧁 Solo mugcake proteico",prot:42,carbs:6,fat:27},{name:"🥞 Panqueque chico (c/huevo) + yogur + scoop",prot:60,carbs:26,fat:12}],
+       parts:[{name:"Mugcake proteico",prot:42,carbs:6,fat:27},{name:"Yogur proteico + scoop",prot:39,carbs:10,fat:3}]},
+      {id:"cena",time:"21:30",icon:"🥩",name:"Cena",desc:"250g carne magra + 150g boniato o papa + ensalada sin aceite",prot:56,carbs:38,fat:15,flexible:true,
+       alts:[{name:"🐟 Atún de lata + papa + ensalada",prot:34,carbs:38,fat:2}],
+       parts:[{name:"Carne (250g)",prot:52,carbs:0,fat:15},{name:"Boniato/papa (150g)",prot:2,carbs:30,fat:0},{name:"Ensalada",prot:2,carbs:8,fat:0}]},
+    ]
+  },
+  { id:"rutina", label:"🍽️ Rutina", short:"Rutina", until:"2026-09-23",
     meals:[
       {id:"desayuno",time:"09:30",icon:"🥞",name:"Desayuno",desc:"Panqueque grande (60g mezcla + 1 huevo) + yogur griego proteico (150g) + 1 scoop whey",prot:67,carbs:33,fat:14,
        alts:[{name:"🥞🍳 Panqueque + 3 huevos",prot:46,carbs:24,fat:26}],
@@ -322,9 +335,19 @@ const CHEAT_KCAL_BUDGET_DEFAULT = 1500;
 // Desde acá rige tracking por excepción: un día sin registro cuenta como rutina cumplida.
 const AUTO_START = '2026-08-24';
 function isAutoDay(d){return d>=AUTO_START;}
-function rutinaScn(){return scenarios.find(s=>!s.legacy)||scenarios[0];}
+// Rutinas versionadas por fecha (v49): la vigente no tiene `until`; al reemplazarla,
+// la anterior recibe until=fecha de corte (exclusive) y los días auto previos se
+// siguen calculando contra ella — editar la rutina no reescribe el historial.
+// Sin fecha devuelve la vigente. `legacy:true` es otra cosa (scenarios pre-cutover).
+function rutinaScn(d){
+  if(d){
+    const past=scenarios.filter(s=>!s.legacy&&s.until&&d<s.until).sort((a,b)=>a.until.localeCompare(b.until))[0];
+    if(past) return past;
+  }
+  return scenarios.find(s=>!s.legacy&&!s.until)||scenarios[0];
+}
 
-const PLANS_REV = 11;
+const PLANS_REV = 12;
 const PLAN_PATCHES = {
   1: [
     {scn:'tarde', meal:'desayuno', desc:'2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano + 5g creatina'},
@@ -542,7 +565,7 @@ function dayKcal(dateStr){
   const log=mealLog[dateStr];
   if(isUnknownDay(dateStr)) return 0;
   if(isAutoDay(dateStr)){
-    if(dateStr<=td()) rutinaScn().meals.forEach(m=>{
+    if(dateStr<=td()) rutinaScn(dateStr).meals.forEach(m=>{
       const v=log&&log.meals?log.meals[m.id]:undefined;
       if(v==='skipped') return;
       kcal+=mealKcal(v&&v.custom?v:effMeal(m,dateStr));
@@ -561,7 +584,7 @@ function dayMacros(dateStr){
   const log=mealLog[dateStr];
   if(isUnknownDay(dateStr)) return {p:0,c:0,f:0};
   if(isAutoDay(dateStr)){
-    if(dateStr<=td()) rutinaScn().meals.forEach(m=>{
+    if(dateStr<=td()) rutinaScn(dateStr).meals.forEach(m=>{
       const v=log&&log.meals?log.meals[m.id]:undefined;
       if(v==='skipped') return;
       const src=(v&&v.custom)?v:effMeal(m,dateStr);
@@ -626,7 +649,15 @@ function applyPlansMigration(){
   // rev 6: rutina única al frente; los escenarios viejos quedan legacy para que el historial siga leyéndose
   if(!scenarios.some(s=>s.id==='rutina')){
     scenarios.forEach(s=>s.legacy=true);
-    scenarios.unshift(JSON.parse(JSON.stringify(DEFAULT_SCENARIOS[0])));
+    DEFAULT_SCENARIOS.slice().reverse().forEach(ds=>scenarios.unshift(JSON.parse(JSON.stringify(ds))));
+  }
+  // rev 12: Rutina IF (ayuno intermitente 12:30-22:00, entrena de mañana) desde
+  // 2026-09-23. La rutina anterior queda con `until` — rutinaScn(d) resuelve por
+  // fecha y los días previos no cambian de plan. Ver rutinaScn.
+  if(storedRev<12){
+    const old=scenarios.find(s=>s.id==='rutina'&&!s.legacy);
+    if(old&&!old.until) old.until='2026-09-23';
+    if(!scenarios.some(s=>s.id==='rutina-if')) scenarios.unshift(JSON.parse(JSON.stringify(DEFAULT_SCENARIOS[0])));
   }
   savePlans();
   save("food-plans-rev",PLANS_REV);
@@ -1081,7 +1112,7 @@ function renderToday(){
 function renderAutoDay(){
   const log=mealLog[activeDate]; // lectura: no crear entrada hasta que haya excepción
   const isToday=activeDate===td();
-  const scn=rutinaScn();
+  const scn=rutinaScn(activeDate);
   if(isUnknownDay(activeDate)){
     $("today-content").innerHTML=`<div class="sec">
       <div class="card" style="cursor:default;border-style:dashed">
@@ -1216,7 +1247,7 @@ function renderAutoDay(){
 }
 
 function openMealActions(mealId){
-  const m=rutinaScn().meals.find(x=>x.id===mealId);
+  const m=rutinaScn(activeDate).meals.find(x=>x.id===mealId);
   if(!m) return;
   const log=mealLog[activeDate];
   const v=log&&log.meals?log.meals[mealId]:undefined;
@@ -1243,7 +1274,7 @@ function startMealParts(mealId){
 }
 
 function renderMealParts(mealId){
-  const m=rutinaScn().meals.find(x=>x.id===mealId);
+  const m=rutinaScn(activeDate).meals.find(x=>x.id===mealId);
   if(!m||!m.parts||!m.parts.length) return;
   if(window._partsMeal!==mealId){window._partsSel=m.parts.map(()=>true);window._partsMeal=mealId;}
   const sel=window._partsSel;
@@ -1270,7 +1301,7 @@ function togglePart(i){
 }
 
 function saveMealParts(mealId){
-  const m=rutinaScn().meals.find(x=>x.id===mealId);
+  const m=rutinaScn(activeDate).meals.find(x=>x.id===mealId);
   if(!m) return;
   const sel=window._partsSel||[];
   const chosen=m.parts.filter((p,i)=>sel[i]);
@@ -1307,7 +1338,7 @@ function resetMeal(mealId){
 }
 
 function pickAlt(mealId,altIdx){
-  const m=rutinaScn().meals.find(x=>x.id===mealId);
+  const m=rutinaScn(activeDate).meals.find(x=>x.id===mealId);
   const a=m&&m.alts?m.alts[altIdx]:null;
   if(!a) return;
   const log=getDayLog(activeDate);
@@ -1404,7 +1435,7 @@ function getDayStatus(dateStr){
   if(isUnknownDay(dateStr)) return 'unknown';
   if(isAutoDay(dateStr)){
     if(dateStr>td()) return null;
-    const skipped=rutinaScn().meals.some(m=>log&&log.meals&&log.meals[m.id]==='skipped');
+    const skipped=rutinaScn(dateStr).meals.some(m=>log&&log.meals&&log.meals[m.id]==='skipped');
     const st=skipped?'partial':'complete';
     return isCheat?st+'-cheat':st;
   }
@@ -1476,7 +1507,7 @@ function renderCal(){
 
 // ── Detalle de día (calendario, solo días auto) ──
 function dayDetail(ds){
-  const scn=rutinaScn();
+  const scn=rutinaScn(ds);
   const log=mealLog[ds];
   const st=getDayStatus(ds)||'none';
   const stInfo={
@@ -1796,7 +1827,7 @@ function effMeal(m,dateStr){
 
 function dayTargetMacros(dateStr){
   let p=0,c=0,f=0;
-  rutinaScn().meals.forEach(m=>{const e=effMeal(m,dateStr);p+=e.prot||0;c+=e.carbs||0;f+=e.fat||0;});
+  rutinaScn(dateStr).meals.forEach(m=>{const e=effMeal(m,dateStr);p+=e.prot||0;c+=e.carbs||0;f+=e.fat||0;});
   return {p,c,f,kcal:p*4+c*4+f*9};
 }
 
@@ -2359,7 +2390,7 @@ function renderAdherenceCard(){
   dates.forEach(d=>{
     if(isUnknownDay(d)) return;
     if(isAutoDay(d)){
-      const st=stats[rutinaScn().id];
+      const st=stats[rutinaScn(d).id];
       if(!st) return;
       st.used++;
       if(isDayComplete(d)) st.complete++;
@@ -2645,7 +2676,7 @@ function analyzeWindow(daysBack){
       // día auto: siempre cuenta; consumo = rutina menos salteos, con reemplazos
       loggedCount++;counted.add(d);
       const log=mealLog[d];
-      rutinaScn().meals.forEach(m=>{
+      rutinaScn(d).meals.forEach(m=>{
         const v=log&&log.meals?log.meals[m.id]:undefined;
         if(v==='skipped') return;
         planKcal+=mealKcal(v&&v.custom?v:effMeal(m,d));
@@ -3007,7 +3038,7 @@ function isDayComplete(dateStr){
   const log=mealLog[dateStr];
   if(isUnknownDay(dateStr)) return false;
   if(isAutoDay(dateStr)){
-    return dateStr<=td()&&!rutinaScn().meals.some(m=>log&&log.meals&&log.meals[m.id]==='skipped');
+    return dateStr<=td()&&!rutinaScn(dateStr).meals.some(m=>log&&log.meals&&log.meals[m.id]==='skipped');
   }
   if(!log||!log.scenario) return false;
   const scn=scenarios.find(s=>s.id===log.scenario);
