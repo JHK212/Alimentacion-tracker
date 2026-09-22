@@ -260,7 +260,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="sec" style="padding-top:0">
     <button class="btn-out danger" onclick="resetPlans()">Resetear planes originales</button>
   </div>
-  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v49</div>
+  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v50</div>
 </div>
 
 <!-- ══ DELETE DAYS ══ -->
@@ -301,15 +301,15 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
 const DEFAULT_SCENARIOS = [
   { id:"rutina-if", label:"🍽️ Rutina IF", short:"Rutina IF",
     meals:[
-      {id:"post",time:"10:00",icon:"🥤",name:"Post-entreno",desc:"1 scoop whey en agua. Días sin entreno: tomalo igual o marcá salteado (un tap)",prot:25,carbs:2,fat:1,optional:true},
-      {id:"almuerzo",time:"12:30",icon:"🍲",name:"Mealprep",desc:"220g cuadrada magra picada cruda + 200g boniato + cebolla, morrón y chauchas",prot:51,carbs:47,fat:11,flexible:true,
+      {id:"almuerzo",time:"12:30",icon:"🍲",name:"Mealprep post-entreno",desc:"220g cuadrada magra picada cruda + 200g boniato + cebolla, morrón y chauchas. Primera comida, ~1h después de entrenar",prot:51,carbs:47,fat:11,flexible:true,training:true,
        parts:[{name:"Cuadrada picada (220g)",prot:46,carbs:0,fat:11},{name:"Boniato (200g)",prot:3,carbs:40,fat:0},{name:"Verduras",prot:2,carbs:7,fat:0}]},
-      {id:"merienda",time:"17:30",icon:"🧁",name:"Merienda",desc:"Mugcake proteico (30g harina almendra + 1 scoop whey + 2 huevos) + yogur griego proteico (150g) + 1 scoop whey",prot:81,carbs:16,fat:30,
-       alts:[{name:"🧁 Solo mugcake proteico",prot:42,carbs:6,fat:27},{name:"🥞 Panqueque chico (c/huevo) + yogur + scoop",prot:60,carbs:26,fat:12}],
-       parts:[{name:"Mugcake proteico",prot:42,carbs:6,fat:27},{name:"Yogur proteico + scoop",prot:39,carbs:10,fat:3}]},
+      {id:"merienda",time:"17:30",icon:"🧁",name:"Merienda (laburo)",desc:"Mugcake proteico (30g harina almendra + 1 scoop whey + 2 huevos) + barrita proteica",prot:52,carbs:18,fat:31,
+       alts:[{name:"🧁 Solo mugcake proteico",prot:42,carbs:6,fat:27},{name:"🥤 Comprado: yogur bebible proteico + barrita + banana",prot:35,carbs:45,fat:8}],
+       parts:[{name:"Mugcake proteico",prot:42,carbs:6,fat:27},{name:"Barrita proteica",prot:10,carbs:12,fat:4}]},
       {id:"cena",time:"21:30",icon:"🥩",name:"Cena",desc:"250g carne magra + 150g boniato o papa + ensalada sin aceite",prot:56,carbs:38,fat:15,flexible:true,
        alts:[{name:"🐟 Atún de lata + papa + ensalada",prot:34,carbs:38,fat:2}],
        parts:[{name:"Carne (250g)",prot:52,carbs:0,fat:15},{name:"Boniato/papa (150g)",prot:2,carbs:30,fat:0},{name:"Ensalada",prot:2,carbs:8,fat:0}]},
+      {id:"postre",time:"22:00",icon:"🍨",name:"Postre / cierre",desc:"Yogur griego proteico (150g) + 1 scoop whey. Cierra la ventana: después de esto no se come más hasta el almuerzo",prot:39,carbs:10,fat:3},
     ]
   },
   { id:"rutina", label:"🍽️ Rutina", short:"Rutina", until:"2026-09-23",
@@ -347,7 +347,7 @@ function rutinaScn(d){
   return scenarios.find(s=>!s.legacy&&!s.until)||scenarios[0];
 }
 
-const PLANS_REV = 12;
+const PLANS_REV = 13;
 const PLAN_PATCHES = {
   1: [
     {scn:'tarde', meal:'desayuno', desc:'2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano + 5g creatina'},
@@ -658,6 +658,14 @@ function applyPlansMigration(){
     const old=scenarios.find(s=>s.id==='rutina'&&!s.legacy);
     if(old&&!old.until) old.until='2026-09-23';
     if(!scenarios.some(s=>s.id==='rutina-if')) scenarios.unshift(JSON.parse(JSON.stringify(DEFAULT_SCENARIOS[0])));
+  }
+  // rev 13: ajuste de la rutina IF antes de su estreno (Joaco entrena 10-11:30 →
+  // el almuerzo ES el post-entreno, chau shake de las 10; merienda portable para
+  // el laburo; postre 22:00 cierra la ventana). rutina-if rige desde 2026-09-23 y
+  // no tiene días logueados todavía → reemplazar meals in-place es seguro.
+  if(storedRev<13){
+    const rif=scenarios.find(s=>s.id==='rutina-if');
+    if(rif) rif.meals=JSON.parse(JSON.stringify(DEFAULT_SCENARIOS[0].meals));
   }
   savePlans();
   save("food-plans-rev",PLANS_REV);
