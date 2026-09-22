@@ -11,6 +11,16 @@ App single-file. Trackeo comidas + cheats + peso + déficit. Personal de Joaco.
 - `analyzeWindow`: todo día auto cuenta como "logged" con consumo = rutina − salteos + reemplazos. Completeness sube sola con el tiempo.
 - Streak ahora = días sin saltear comida (crece sin abrir la app; by design). `celebrateDay` casi no dispara en días auto (día ya nace completo).
 
+## Rutinas versionadas por fecha + Rutina IF (v49, desde 2026-09-23)
+
+**Contexto:** Joaco pasó a ayuno intermitente (entrena de mañana, ventana de comida ~12:30-22:00). Se mató el desayuno (526 kcal) y se redistribuyó a merienda y cena — sus caídas documentadas son todas 17-23h, así que las calorías van donde está el hambre real. Scenario nuevo `rutina-if` (~1777 kcal con post-entreno, 213p/103c/57f; sin el shake 1660/188p): `post` 10:00 scoop whey `optional:true` (días sin entreno lo saltea o lo toma igual) · `almuerzo` 12:30 (igual que antes, ids intactos → **mealprep windows siguen funcionando**) · `merienda` 17:30 engordada (mugcake + yogur pro + scoop, 81p) · `cena` 21:30 engordada (250g carne + 150g boniato/papa).
+
+**Mecánica de versionado (el cambio estructural):** editar la rutina vigente reescribía el pasado — los días auto se calculan contra `rutinaScn()` y sacarle el desayuno les bajaba 526 kcal retroactivamente, corrompiendo justo la medición de TDEE. Ahora:
+- `rutinaScn(d)` acepta fecha opcional: sin fecha devuelve la vigente (non-legacy sin `until`); con fecha busca la versión non-legacy cuyo `until` (exclusive) sea `> d` — la más vieja que aplique. La rutina pre-IF quedó con `until:'2026-09-23'`.
+- Migración rev 12 (`PLANS_REV=12`): setea `until` en la rutina vieja y hace unshift de `rutina-if`. El bloque rev-6 ahora unshiftea TODOS los `DEFAULT_SCENARIOS` (la nueva + la vieja con until) para que un device fresco también resuelva historia.
+- Call sites con fecha: `dayKcal`, `dayMacros`, `renderAutoDay`, `openMealActions`/`renderMealParts`/`saveMealParts`/`pickAlt` (usan `activeDate`), `getDayStatus`, `dayDetail`, `dayTargetMacros`, `isDayComplete`, `analyzeWindow`, stats de `renderAdherenceCard`. Quedan SIN fecha a propósito: el export/resumen (muestra el plan base vigente) y el fallback de la definición.
+- **Para la próxima vez que Joaco cambie de plan:** NO editar la rutina vigente in-place si el cambio es estructural — nueva migración: setear `until` en la vigente y unshift del scenario nuevo. Editar in-place solo para ajustes chicos de macros/desc donde la deriva histórica no importa (como los PLAN_PATCHES viejos).
+
 ## Confirmación de días fantasma (v48, desde 2026-09-22)
 
 **Por qué existe:** el tracking por excepción tenía un agujero que corrompió el análisis de sept 2026 — olvidarse de abrir la app y cumplir perfecto eran indistinguibles. En el resumen de 28 días aparecieron ~4 "días fantasma" (1768 kcal clavado, cero interacción) contados como plan cumplido → ingesta promedio subestimada → TDEE medido ~2139 cuando el real estimado por fórmula es 2500-2800. Decisión con Joaco: **el silencio ya no es cumplimiento; un día pasado cuenta recién cuando él lo dice.**
