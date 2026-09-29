@@ -260,7 +260,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="sec" style="padding-top:0">
     <button class="btn-out danger" onclick="resetPlans()">Resetear planes originales</button>
   </div>
-  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v51</div>
+  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v52</div>
 </div>
 
 <!-- ══ DELETE DAYS ══ -->
@@ -303,12 +303,12 @@ const DEFAULT_SCENARIOS = [
     meals:[
       {id:"almuerzo",time:"12:30",icon:"🍲",name:"Mealprep post-entreno",desc:"220g cuadrada magra picada cruda + 200g boniato + cebolla, morrón y chauchas. Primera comida, ~1h después de entrenar",prot:51,carbs:47,fat:11,flexible:true,training:true,
        parts:[{name:"Cuadrada picada (220g)",prot:46,carbs:0,fat:11},{name:"Boniato (200g)",prot:3,carbs:40,fat:0},{name:"Verduras",prot:2,carbs:7,fat:0}]},
-      {id:"panqueque",time:"12:45",icon:"🥞",name:"Postre del almuerzo",desc:"Panqueque chico (~40g mezcla + 1 huevo)",prot:21,carbs:16,fat:9},
+      {id:"panqueque",time:"12:45",icon:"🥞",name:"Postre del almuerzo",desc:"Panqueque chico (4 cdas al ras ≈ 27g mezcla + 1 huevo)",prot:17,carbs:11,fat:7},
       {id:"merienda",time:"17:30",icon:"🧁",name:"Merienda (laburo)",desc:"Mugcake proteico (30g harina almendra + 1 scoop whey + 2 huevos)",prot:42,carbs:6,fat:27,
        alts:[{name:"🥤 Comprado: yogur bebible proteico + barrita + banana",prot:35,carbs:45,fat:8}]},
-      {id:"cena",time:"21:30",icon:"🥩",name:"Cena",desc:"250g carne magra + 150g boniato o papa + ensalada sin aceite",prot:56,carbs:38,fat:15,flexible:true,
-       alts:[{name:"🐟 Atún de lata + papa + ensalada",prot:34,carbs:38,fat:2}],
-       parts:[{name:"Carne (250g)",prot:52,carbs:0,fat:15},{name:"Boniato/papa (150g)",prot:2,carbs:30,fat:0},{name:"Ensalada",prot:2,carbs:8,fat:0}]},
+      {id:"cena",time:"21:30",icon:"🐟",name:"Cena",desc:"1 lata de atún al natural + ensalada sin aceite",prot:32,carbs:8,fat:2,flexible:true,
+       alts:[{name:"🥩 250g carne magra (cruda) + ensalada",prot:54,carbs:8,fat:15}],
+       parts:[{name:"Atún (1 lata al natural)",prot:30,carbs:0,fat:2},{name:"Ensalada",prot:2,carbs:8,fat:0}]},
       {id:"postre",time:"22:00",icon:"🍨",name:"Postre / cierre",desc:"Yogur griego proteico (150g) + 1 scoop whey. Cierra la ventana: después de esto no se come más hasta el almuerzo",prot:39,carbs:10,fat:3},
     ]
   },
@@ -347,7 +347,7 @@ function rutinaScn(d){
   return scenarios.find(s=>!s.legacy&&!s.until)||scenarios[0];
 }
 
-const PLANS_REV = 14;
+const PLANS_REV = 15;
 const PLAN_PATCHES = {
   1: [
     {scn:'tarde', meal:'desayuno', desc:'2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano + 5g creatina'},
@@ -404,6 +404,15 @@ const PLAN_PATCHES = {
   11: [
     {scn:'rutina', meal:'almuerzo', desc:'220g cuadrada magra picada cruda + 200g boniato + cebolla, morrón y chauchas', prot:51, carbs:47, fat:11,
      parts:[{name:'Cuadrada picada (220g)',prot:46,carbs:0,fat:11},{name:'Boniato (200g)',prot:3,carbs:40,fat:0},{name:'Verduras',prot:2,carbs:7,fat:0}]},
+  ],
+  // panqueque pesado: 4 cdas al ras = 25-30g de mezcla, no 40. Corrección de medición,
+  // no cambio de plan → in-place a propósito (también corrige 23-24/9, que ya eran así)
+  15: [
+    {scn:'rutina-if', meal:'panqueque', desc:'Panqueque chico (4 cdas al ras ≈ 27g mezcla + 1 huevo)', prot:17, carbs:11, fat:7},
+    // la cena real desde el estreno: atún casi todas las noches, nunca boniato → corrección in-place
+    {scn:'rutina-if', meal:'cena', icon:'🐟', desc:'1 lata de atún al natural + ensalada sin aceite', prot:32, carbs:8, fat:2,
+     alts:[{name:'🥩 250g carne magra (cruda) + ensalada',prot:54,carbs:8,fat:15}],
+     parts:[{name:'Atún (1 lata al natural)',prot:30,carbs:0,fat:2},{name:'Ensalada',prot:2,carbs:8,fat:0}]},
   ],
 };
 
@@ -673,6 +682,19 @@ function applyPlansMigration(){
   if(storedRev<14){
     const rif=scenarios.find(s=>s.id==='rutina-if');
     if(rif) rif.meals=JSON.parse(JSON.stringify(DEFAULT_SCENARIOS[0].meals));
+  }
+  // rev 15: el alt de atún solo se ofrecía con papa y Joaco lo comía sin → los logs
+  // guardan snapshot de macros, corregirlos acá (el plan solo no los toca)
+  if(storedRev<15){
+    const fl=load("food-log",{});
+    let fixed=false;
+    Object.values(fl).forEach(l=>{
+      const c=l&&l.meals&&l.meals.cena;
+      if(c&&c.custom&&c.name==='🐟 Atún de lata + papa + ensalada'){
+        Object.assign(c,{name:'🐟 Atún de lata + ensalada',prot:32,carbs:8,fat:2});fixed=true;
+      }
+    });
+    if(fixed) save("food-log",fl);
   }
   savePlans();
   save("food-plans-rev",PLANS_REV);
