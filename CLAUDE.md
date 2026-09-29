@@ -13,11 +13,11 @@ App single-file. Trackeo comidas + cheats + peso + déficit. Personal de Joaco.
 
 ## Rutinas versionadas por fecha + Rutina IF (v49-v50, desde 2026-09-23)
 
-**Contexto:** Joaco pasó a ayuno intermitente (se levanta 09:00, entrena 10:00-11:30 en ayunas, ventana de comida 12:30-22:00, ~14,5h de ayuno). Se mató el desayuno (526 kcal) y se redistribuyó a la franja 17-23h donde están sus caídas documentadas. Scenario `rutina-if` (~1889 kcal, 209p/117c/65f desde rev 14), ids `almuerzo`/`cena` intactos → **mealprep windows siguen funcionando**:
+**Contexto:** Joaco pasó a ayuno intermitente (se levanta 09:00, entrena 10:00-11:30 en ayunas, ventana de comida 12:30-22:00, ~14,5h de ayuno). Se mató el desayuno (526 kcal) y se redistribuyó a la franja 17-23h donde están sus caídas documentadas. Scenario `rutina-if` (~1502 kcal, 181p/82c/50f desde rev 15), ids `almuerzo`/`cena` intactos → **mealprep windows siguen funcionando**:
 - `almuerzo` 12:30 "Mealprep post-entreno" — primera comida, ~1h después de entrenar. Reemplaza al shake post-entreno (rev 12 tenía un meal `post` 10:00 que murió en rev 13: entrenando 10-11:30 el shake era redundante con el almuerzo a 45-60 min).
-- `panqueque` 12:45 "Postre del almuerzo" — panqueque chico c/huevo, ~40g mezcla (rev 14, reemplazó a la barrita de la merienda). **Meal propio, no parte de `almuerzo`**: `effMeal` pisa los macros de almuerzo con la receta del mealprep y el panqueque se perdería.
+- `panqueque` 12:45 "Postre del almuerzo" — panqueque chico c/huevo, 4 cdas al ras ≈ 27g de mezcla pesada (rev 14; macros corregidos in-place en rev 15 vía PLAN_PATCHES, reemplazó a la barrita de la merienda). **Meal propio, no parte de `almuerzo`**: `effMeal` pisa los macros de almuerzo con la receta del mealprep y el panqueque se perdería.
 - `merienda` 17:30 "(laburo)" — mugcake proteico solo. Restricción real: tiene que viajar en mochila (el yogur no llega al trabajo). Alt "comprado" (yogur bebible + barrita + banana) para el día que se olvida el mugcake — ya le pasó.
-- `cena` 21:30 — 250g carne + 150g boniato/papa + ensalada (engordada vs plan viejo).
+- `cena` 21:30 — 1 lata de atún al natural + ensalada (lo que come casi todas las noches); alt = 250g carne magra cruda + ensalada. El plan decía carne + boniato y ninguno de los dos era real: rev 15 lo corrigió in-place (corrección de medición, arregla también 23-25/9) y reescribe en `food-log` los logs con el alt viejo "Atún de lata + papa + ensalada" (los logs guardan snapshot de macros).
 - `postre` 22:00 "cierre" — yogur griego pro + scoop. Slot a propósito: ataca su picoteo nocturno documentado (helados 23:25) con algo planificado; después de esto la ventana cierra.
 
 **Mecánica de versionado (el cambio estructural):** editar la rutina vigente reescribía el pasado — los días auto se calculan contra `rutinaScn()` y sacarle el desayuno les bajaba 526 kcal retroactivamente, corrompiendo justo la medición de TDEE. Ahora:
