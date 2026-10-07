@@ -260,7 +260,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="sec" style="padding-top:0">
     <button class="btn-out danger" onclick="resetPlans()">Resetear planes originales</button>
   </div>
-  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v52</div>
+  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v53</div>
 </div>
 
 <!-- ══ DELETE DAYS ══ -->
@@ -298,9 +298,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
 // ── Scenarios Data ──
 // Rutina única (ago 2026). Tracking por excepción: día sin registro = rutina cumplida.
 // alts = variantes con macros propios, elegibles desde la comida sin pasar por el catálogo.
-const DEFAULT_SCENARIOS = [
-  { id:"rutina-if", label:"🍽️ Rutina IF", short:"Rutina IF",
-    meals:[
+const RUTINA_IF_MEALS = [
       {id:"almuerzo",time:"12:30",icon:"🍲",name:"Mealprep post-entreno",desc:"220g cuadrada magra picada cruda + 200g boniato + cebolla, morrón y chauchas. Primera comida, ~1h después de entrenar",prot:51,carbs:47,fat:11,flexible:true,training:true,
        parts:[{name:"Cuadrada picada (220g)",prot:46,carbs:0,fat:11},{name:"Boniato (200g)",prot:3,carbs:40,fat:0},{name:"Verduras",prot:2,carbs:7,fat:0}]},
       {id:"panqueque",time:"12:45",icon:"🥞",name:"Postre del almuerzo",desc:"Panqueque chico (4 cdas al ras ≈ 27g mezcla + 1 huevo)",prot:17,carbs:11,fat:7},
@@ -310,8 +308,17 @@ const DEFAULT_SCENARIOS = [
        alts:[{name:"🥩 250g carne magra (cruda) + ensalada",prot:54,carbs:8,fat:15}],
        parts:[{name:"Atún (1 lata al natural)",prot:30,carbs:0,fat:2},{name:"Ensalada",prot:2,carbs:8,fat:0}]},
       {id:"postre",time:"22:00",icon:"🍨",name:"Postre / cierre",desc:"Yogur griego proteico (150g) + 1 scoop whey. Cierra la ventana: después de esto no se come más hasta el almuerzo",prot:39,carbs:10,fat:3},
-    ]
+];
+const DEFAULT_SCENARIOS = [
+  // oct 2026: scoop nocturno → avena. Carbos la noche anterior al entreno en ayunas
+  // (glucógeno); prote 181→162g (~1,95 g/kg), mismas kcal
+  { id:"rutina-if2", label:"🍽️ Rutina IF", short:"Rutina IF",
+    meals:RUTINA_IF_MEALS.map(m=>m.id!=='postre'?m:{...m,
+      desc:"Yogur griego proteico (150g) + 35g copos de avena sin azúcar. Cierra la ventana: después de esto no se come más hasta el almuerzo",prot:20,carbs:29,fat:3,
+      alts:[{name:"🥛 Yogur + scoop (sin avena)",prot:39,carbs:10,fat:3}],
+      parts:[{name:"Yogur proteico (150g)",prot:15,carbs:6,fat:1},{name:"Copos de avena (35g)",prot:5,carbs:23,fat:2}]})
   },
+  { id:"rutina-if", label:"🍽️ Rutina IF", short:"Rutina IF", until:"2026-10-08", meals:RUTINA_IF_MEALS },
   { id:"rutina", label:"🍽️ Rutina", short:"Rutina", until:"2026-09-23",
     meals:[
       {id:"desayuno",time:"09:30",icon:"🥞",name:"Desayuno",desc:"Panqueque grande (60g mezcla + 1 huevo) + yogur griego proteico (150g) + 1 scoop whey",prot:67,carbs:33,fat:14,
@@ -339,6 +346,7 @@ function isAutoDay(d){return d>=AUTO_START;}
 // la anterior recibe until=fecha de corte (exclusive) y los días auto previos se
 // siguen calculando contra ella — editar la rutina no reescribe el historial.
 // Sin fecha devuelve la vigente. `legacy:true` es otra cosa (scenarios pre-cutover).
+function defScn(id){return DEFAULT_SCENARIOS.find(s=>s.id===id);}
 function rutinaScn(d){
   if(d){
     const past=scenarios.filter(s=>!s.legacy&&s.until&&d<s.until).sort((a,b)=>a.until.localeCompare(b.until))[0];
@@ -347,7 +355,7 @@ function rutinaScn(d){
   return scenarios.find(s=>!s.legacy&&!s.until)||scenarios[0];
 }
 
-const PLANS_REV = 15;
+const PLANS_REV = 16;
 const PLAN_PATCHES = {
   1: [
     {scn:'tarde', meal:'desayuno', desc:'2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano + 5g creatina'},
@@ -666,7 +674,7 @@ function applyPlansMigration(){
   if(storedRev<12){
     const old=scenarios.find(s=>s.id==='rutina'&&!s.legacy);
     if(old&&!old.until) old.until='2026-09-23';
-    if(!scenarios.some(s=>s.id==='rutina-if')) scenarios.unshift(JSON.parse(JSON.stringify(DEFAULT_SCENARIOS[0])));
+    if(!scenarios.some(s=>s.id==='rutina-if')) scenarios.unshift(JSON.parse(JSON.stringify(defScn('rutina-if'))));
   }
   // rev 13: ajuste de la rutina IF antes de su estreno (Joaco entrena 10-11:30 →
   // el almuerzo ES el post-entreno, chau shake de las 10; merienda portable para
@@ -674,14 +682,14 @@ function applyPlansMigration(){
   // no tiene días logueados todavía → reemplazar meals in-place es seguro.
   if(storedRev<13){
     const rif=scenarios.find(s=>s.id==='rutina-if');
-    if(rif) rif.meals=JSON.parse(JSON.stringify(DEFAULT_SCENARIOS[0].meals));
+    if(rif) rif.meals=JSON.parse(JSON.stringify(defScn('rutina-if').meals));
   }
   // rev 14: barrita de la merienda → panqueque como postre del almuerzo. Meal propio
   // (no parte de almuerzo) porque effMeal pisa los macros de almuerzo con la receta
   // del mealprep y el panqueque desaparecería. Aplicado el día del estreno.
   if(storedRev<14){
     const rif=scenarios.find(s=>s.id==='rutina-if');
-    if(rif) rif.meals=JSON.parse(JSON.stringify(DEFAULT_SCENARIOS[0].meals));
+    if(rif) rif.meals=JSON.parse(JSON.stringify(defScn('rutina-if').meals));
   }
   // rev 15: el alt de atún solo se ofrecía con papa y Joaco lo comía sin → los logs
   // guardan snapshot de macros, corregirlos acá (el plan solo no los toca)
@@ -695,6 +703,13 @@ function applyPlansMigration(){
       }
     });
     if(fixed) save("food-log",fl);
+  }
+  // rev 16: cambio de plan real (no corrección) → versión nueva con fecha, la
+  // rutina-if queda con until y el historial no se reescribe
+  if(storedRev<16){
+    const rif=scenarios.find(s=>s.id==='rutina-if');
+    if(rif&&!rif.until) rif.until='2026-10-08';
+    if(!scenarios.some(s=>s.id==='rutina-if2')) scenarios.unshift(JSON.parse(JSON.stringify(defScn('rutina-if2'))));
   }
   savePlans();
   save("food-plans-rev",PLANS_REV);
