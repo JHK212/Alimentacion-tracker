@@ -260,7 +260,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="sec" style="padding-top:0">
     <button class="btn-out danger" onclick="resetPlans()">Resetear planes originales</button>
   </div>
-  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v53</div>
+  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v54</div>
 </div>
 
 <!-- ══ DELETE DAYS ══ -->
@@ -309,14 +309,18 @@ const RUTINA_IF_MEALS = [
        parts:[{name:"Atún (1 lata al natural)",prot:30,carbs:0,fat:2},{name:"Ensalada",prot:2,carbs:8,fat:0}]},
       {id:"postre",time:"22:00",icon:"🍨",name:"Postre / cierre",desc:"Yogur griego proteico (150g) + 1 scoop whey. Cierra la ventana: después de esto no se come más hasta el almuerzo",prot:39,carbs:10,fat:3},
 ];
+// v2: los carbos van como papa en la cena (con la proteína que toque); el postre
+// queda yogur solo. Avena/scoop como alts del postre.
+const RIF2_CENA={id:"cena",time:"21:30",icon:"🐟",name:"Cena",desc:"1 lata de atún al natural + 170g papa (cruda) + ensalada sin aceite",prot:35,carbs:37,fat:2,flexible:true,
+  alts:[{name:"🥩 250g carne magra (cruda) + 170g papa + ensalada",prot:57,carbs:37,fat:15},{name:"🐟 Atún + ensalada (sin papa)",prot:32,carbs:8,fat:2}],
+  parts:[{name:"Atún (1 lata al natural)",prot:30,carbs:0,fat:2},{name:"Papa (170g cruda)",prot:3,carbs:29,fat:0},{name:"Ensalada",prot:2,carbs:8,fat:0}]};
+const RIF2_POSTRE={id:"postre",time:"22:00",icon:"🍨",name:"Postre / cierre",desc:"Yogur griego proteico (150g). Cierra la ventana: después de esto no se come más hasta el almuerzo",prot:15,carbs:6,fat:1,
+  alts:[{name:"🥣 Yogur + 35g avena (día sin papa)",prot:20,carbs:29,fat:3},{name:"🥛 Yogur + scoop",prot:39,carbs:10,fat:3}]};
 const DEFAULT_SCENARIOS = [
-  // oct 2026: scoop nocturno → avena. Carbos la noche anterior al entreno en ayunas
+  // oct 2026: scoop nocturno → carbos. Carbos la noche anterior al entreno en ayunas
   // (glucógeno); prote 181→162g (~1,95 g/kg), mismas kcal
   { id:"rutina-if2", label:"🍽️ Rutina IF", short:"Rutina IF",
-    meals:RUTINA_IF_MEALS.map(m=>m.id!=='postre'?m:{...m,
-      desc:"Yogur griego proteico (150g) + 35g copos de avena sin azúcar. Cierra la ventana: después de esto no se come más hasta el almuerzo",prot:20,carbs:29,fat:3,
-      alts:[{name:"🥛 Yogur + scoop (sin avena)",prot:39,carbs:10,fat:3}],
-      parts:[{name:"Yogur proteico (150g)",prot:15,carbs:6,fat:1},{name:"Copos de avena (35g)",prot:5,carbs:23,fat:2}]})
+    meals:RUTINA_IF_MEALS.map(m=>m.id==='cena'?RIF2_CENA:m.id==='postre'?RIF2_POSTRE:m)
   },
   { id:"rutina-if", label:"🍽️ Rutina IF", short:"Rutina IF", until:"2026-10-08", meals:RUTINA_IF_MEALS },
   { id:"rutina", label:"🍽️ Rutina", short:"Rutina", until:"2026-09-23",
@@ -355,7 +359,7 @@ function rutinaScn(d){
   return scenarios.find(s=>!s.legacy&&!s.until)||scenarios[0];
 }
 
-const PLANS_REV = 16;
+const PLANS_REV = 17;
 const PLAN_PATCHES = {
   1: [
     {scn:'tarde', meal:'desayuno', desc:'2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano + 5g creatina'},
@@ -710,6 +714,12 @@ function applyPlansMigration(){
     const rif=scenarios.find(s=>s.id==='rutina-if');
     if(rif&&!rif.until) rif.until='2026-10-08';
     if(!scenarios.some(s=>s.id==='rutina-if2')) scenarios.unshift(JSON.parse(JSON.stringify(defScn('rutina-if2'))));
+  }
+  // rev 17: el día del estreno (antes de la primera noche) Joaco prefirió papa en la
+  // cena en vez de avena en el yogur → reemplazo in-place, rutina-if2 aún no tenía cena
+  if(storedRev<17){
+    const r2=scenarios.find(s=>s.id==='rutina-if2');
+    if(r2) r2.meals=r2.meals.map(m=>m.id==='cena'?JSON.parse(JSON.stringify(RIF2_CENA)):m.id==='postre'?JSON.parse(JSON.stringify(RIF2_POSTRE)):m);
   }
   savePlans();
   save("food-plans-rev",PLANS_REV);
