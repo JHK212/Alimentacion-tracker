@@ -53,8 +53,7 @@ Then open http://localhost:8000. The layout is mobile-first (max width 480 px); 
 ```
 Alimentacion-tracker/
 ├── index.html   # The entire app: markup, styles, logic, default meal plans
-├── sw.js        # Service worker (network-first with cache fallback)
-└── CLAUDE.md    # Internal developer notes (Spanish): data model, storage keys, conventions
+└── sw.js        # Service worker (network-first with cache fallback)
 ```
 
 ## Notes
