@@ -260,7 +260,7 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
   <div class="sec" style="padding-top:0">
     <button class="btn-out danger" onclick="resetPlans()">Resetear planes originales</button>
   </div>
-  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v54</div>
+  <div class="text-xs text-mt" style="text-align:center;padding:6px 0 16px">app v55</div>
 </div>
 
 <!-- ══ DELETE DAYS ══ -->
@@ -299,42 +299,51 @@ body{background:var(--bg);color:var(--tx);font-family:var(--fs);max-width:480px;
 // Rutina única (ago 2026). Tracking por excepción: día sin registro = rutina cumplida.
 // alts = variantes con macros propios, elegibles desde la comida sin pasar por el catálogo.
 const RUTINA_IF_MEALS = [
-      {id:"almuerzo",time:"12:30",icon:"🍲",name:"Mealprep post-entreno",desc:"220g cuadrada magra picada cruda + 200g boniato + cebolla, morrón y chauchas. Primera comida, ~1h después de entrenar",prot:51,carbs:47,fat:11,flexible:true,training:true,
-       parts:[{name:"Cuadrada picada (220g)",prot:46,carbs:0,fat:11},{name:"Boniato (200g)",prot:3,carbs:40,fat:0},{name:"Verduras",prot:2,carbs:7,fat:0}]},
-      {id:"panqueque",time:"12:45",icon:"🥞",name:"Postre del almuerzo",desc:"Panqueque chico (4 cdas al ras ≈ 27g mezcla + 1 huevo)",prot:17,carbs:11,fat:7},
-      {id:"merienda",time:"17:30",icon:"🧁",name:"Merienda (laburo)",desc:"Mugcake proteico (30g harina almendra + 1 scoop whey + 2 huevos)",prot:42,carbs:6,fat:27,
-       alts:[{name:"🥤 Comprado: yogur bebible proteico + barrita + banana",prot:35,carbs:45,fat:8}]},
-      {id:"cena",time:"21:30",icon:"🐟",name:"Cena",desc:"1 lata de atún al natural + ensalada sin aceite",prot:32,carbs:8,fat:2,flexible:true,
-       alts:[{name:"🥩 250g carne magra (cruda) + ensalada",prot:54,carbs:8,fat:15}],
-       parts:[{name:"Atún (1 lata al natural)",prot:30,carbs:0,fat:2},{name:"Ensalada",prot:2,carbs:8,fat:0}]},
-      {id:"postre",time:"22:00",icon:"🍨",name:"Postre / cierre",desc:"Yogur griego proteico (150g) + 1 scoop whey. Cierra la ventana: después de esto no se come más hasta el almuerzo",prot:39,carbs:10,fat:3},
+      {id:"almuerzo",time:"12:30",icon:"🍲",name:"Mealprep post-entreno",desc:"220g cuadrada magra picada cruda + 200g boniato + cebolla, morrón y chauchas. Primera comida, ~1h después de entrenar",prot:51,carbs:47,fat:11,fib:9,flexible:true,training:true,
+       parts:[{name:"Cuadrada picada (220g)",prot:46,carbs:0,fat:11,fib:0},{name:"Boniato (200g)",prot:3,carbs:40,fat:0,fib:6},{name:"Verduras",prot:2,carbs:7,fat:0,fib:3}]},
+      {id:"panqueque",time:"12:45",icon:"🥞",name:"Postre del almuerzo",desc:"Panqueque chico (4 cdas al ras ≈ 27g mezcla + 1 huevo)",prot:17,carbs:11,fat:7,fib:1},
+      {id:"merienda",time:"17:30",icon:"🧁",name:"Merienda (laburo)",desc:"Mugcake proteico (30g harina almendra + 1 scoop whey + 2 huevos)",prot:42,carbs:6,fat:27,fib:3,
+       alts:[{name:"🥤 Comprado: yogur bebible proteico + barrita + banana",prot:35,carbs:45,fat:8,fib:5}]},
+      {id:"cena",time:"21:30",icon:"🐟",name:"Cena",desc:"1 lata de atún al natural + ensalada sin aceite",prot:32,carbs:8,fat:2,fib:3,flexible:true,
+       alts:[{name:"🥩 250g carne magra (cruda) + ensalada",prot:54,carbs:8,fat:15,fib:3}],
+       parts:[{name:"Atún (1 lata al natural)",prot:30,carbs:0,fat:2,fib:0},{name:"Ensalada",prot:2,carbs:8,fat:0,fib:3}]},
+      {id:"postre",time:"22:00",icon:"🍨",name:"Postre / cierre",desc:"Yogur griego proteico (150g) + 1 scoop whey. Cierra la ventana: después de esto no se come más hasta el almuerzo",prot:39,carbs:10,fat:3,fib:0},
 ];
 // v2: los carbos van como papa en la cena (con la proteína que toque); el postre
 // queda yogur solo. Avena/scoop como alts del postre.
-const RIF2_CENA={id:"cena",time:"21:30",icon:"🐟",name:"Cena",desc:"1 lata de atún al natural + 170g papa (cruda) + ensalada sin aceite",prot:35,carbs:37,fat:2,flexible:true,
-  alts:[{name:"🥩 250g carne magra (cruda) + 170g papa + ensalada",prot:57,carbs:37,fat:15},{name:"🐟 Atún + ensalada (sin papa)",prot:32,carbs:8,fat:2}],
-  parts:[{name:"Atún (1 lata al natural)",prot:30,carbs:0,fat:2},{name:"Papa (170g cruda)",prot:3,carbs:29,fat:0},{name:"Ensalada",prot:2,carbs:8,fat:0}]};
-const RIF2_POSTRE={id:"postre",time:"22:00",icon:"🍨",name:"Postre / cierre",desc:"Yogur griego proteico (150g). Cierra la ventana: después de esto no se come más hasta el almuerzo",prot:15,carbs:6,fat:1,
-  alts:[{name:"🥣 Yogur + 35g avena (día sin papa)",prot:20,carbs:29,fat:3},{name:"🥛 Yogur + scoop",prot:39,carbs:10,fat:3}]};
+const RIF2_CENA={id:"cena",time:"21:30",icon:"🐟",name:"Cena",desc:"1 lata de atún al natural + 170g papa (cruda) + ensalada sin aceite",prot:35,carbs:37,fat:2,fib:6,flexible:true,
+  alts:[{name:"🥩 250g carne magra (cruda) + 170g papa + ensalada",prot:57,carbs:37,fat:15,fib:6},{name:"🐟 Atún + ensalada (sin papa)",prot:32,carbs:8,fat:2,fib:3}],
+  parts:[{name:"Atún (1 lata al natural)",prot:30,carbs:0,fat:2,fib:0},{name:"Papa (170g cruda)",prot:3,carbs:29,fat:0,fib:3},{name:"Ensalada",prot:2,carbs:8,fat:0,fib:3}]};
+const RIF2_POSTRE={id:"postre",time:"22:00",icon:"🍨",name:"Postre / cierre",desc:"Yogur griego proteico (150g). Cierra la ventana: después de esto no se come más hasta el almuerzo",prot:15,carbs:6,fat:1,fib:0,
+  alts:[{name:"🥣 Yogur + 35g avena (día sin papa)",prot:20,carbs:29,fat:3,fib:4},{name:"🥛 Yogur + scoop",prot:39,carbs:10,fat:3,fib:0}]};
+// v3 (desde 12/10): psyllium en el yogur de cierre. Fibra soluble viscosa (gel →
+// saciedad, GLP-1/PYY vía AGCC) justo en la franja de picoteo nocturno, y sube la
+// fibra del día de ~19 a ~23g. Arranca en 5g a propósito: subir de golpe da gases.
+const RIF3_POSTRE={id:"postre",time:"22:00",icon:"🍨",name:"Postre / cierre",desc:"Yogur griego proteico (150g) + 1 cdita de psyllium (5g), mezclar y comer enseguida + 1 vaso de agua. Cierra la ventana: después de esto no se come más hasta el almuerzo",prot:15,carbs:7,fat:1,fib:4,
+  alts:[{name:"🥣 Yogur + psyllium + 35g avena (día sin papa)",prot:20,carbs:30,fat:3,fib:8},{name:"🥛 Yogur + psyllium + scoop",prot:39,carbs:11,fat:3,fib:4},{name:"🍨 Yogur solo (sin psyllium)",prot:15,carbs:6,fat:1,fib:0}],
+  parts:[{name:"Yogur griego (150g)",prot:15,carbs:6,fat:1,fib:0},{name:"Psyllium (5g)",prot:0,carbs:1,fat:0,fib:4}]};
 const DEFAULT_SCENARIOS = [
+  { id:"rutina-if3", label:"🍽️ Rutina IF", short:"Rutina IF",
+    meals:RUTINA_IF_MEALS.map(m=>m.id==='cena'?RIF2_CENA:m.id==='postre'?RIF3_POSTRE:m)
+  },
   // oct 2026: scoop nocturno → carbos. Carbos la noche anterior al entreno en ayunas
   // (glucógeno); prote 181→162g (~1,95 g/kg), mismas kcal
-  { id:"rutina-if2", label:"🍽️ Rutina IF", short:"Rutina IF",
+  { id:"rutina-if2", label:"🍽️ Rutina IF", short:"Rutina IF", until:"2026-10-12",
     meals:RUTINA_IF_MEALS.map(m=>m.id==='cena'?RIF2_CENA:m.id==='postre'?RIF2_POSTRE:m)
   },
   { id:"rutina-if", label:"🍽️ Rutina IF", short:"Rutina IF", until:"2026-10-08", meals:RUTINA_IF_MEALS },
   { id:"rutina", label:"🍽️ Rutina", short:"Rutina", until:"2026-09-23",
     meals:[
-      {id:"desayuno",time:"09:30",icon:"🥞",name:"Desayuno",desc:"Panqueque grande (60g mezcla + 1 huevo) + yogur griego proteico (150g) + 1 scoop whey",prot:67,carbs:33,fat:14,
-       alts:[{name:"🥞🍳 Panqueque + 3 huevos",prot:46,carbs:24,fat:26}],
-       parts:[{name:"Panqueque grande (c/huevo)",prot:28,carbs:23,fat:11},{name:"Yogur proteico + scoop",prot:39,carbs:10,fat:3}]},
-      {id:"almuerzo",time:"13:30",icon:"🍲",name:"Mealprep",desc:"220g cuadrada magra picada cruda + 200g boniato + cebolla, morrón y chauchas",prot:51,carbs:47,fat:11,flexible:true,
-       parts:[{name:"Cuadrada picada (220g)",prot:46,carbs:0,fat:11},{name:"Boniato (200g)",prot:3,carbs:40,fat:0},{name:"Verduras",prot:2,carbs:7,fat:0}]},
-      {id:"merienda",time:"17:30",icon:"🧁",name:"Merienda",desc:"Mugcake proteico (30g harina almendra + 1 scoop whey + 2 huevos)",prot:42,carbs:6,fat:27,
-       alts:[{name:"🥞 Panqueque chico (c/huevo) + yogur + scoop",prot:60,carbs:26,fat:12}]},
-      {id:"cena",time:"21:30",icon:"🥩",name:"Cena",desc:"200g carne (vaca/pollo/cerdo magro) + ensalada sin aceite",prot:44,carbs:8,fat:12,flexible:true,
-       alts:[{name:"🐟 Atún de lata + ensalada",prot:32,carbs:8,fat:2}],
-       parts:[{name:"Carne (200g)",prot:42,carbs:0,fat:12},{name:"Ensalada",prot:2,carbs:8,fat:0}]},
+      {id:"desayuno",time:"09:30",icon:"🥞",name:"Desayuno",desc:"Panqueque grande (60g mezcla + 1 huevo) + yogur griego proteico (150g) + 1 scoop whey",prot:67,carbs:33,fat:14,fib:2,
+       alts:[{name:"🥞🍳 Panqueque + 3 huevos",prot:46,carbs:24,fat:26,fib:2}],
+       parts:[{name:"Panqueque grande (c/huevo)",prot:28,carbs:23,fat:11,fib:2},{name:"Yogur proteico + scoop",prot:39,carbs:10,fat:3,fib:0}]},
+      {id:"almuerzo",time:"13:30",icon:"🍲",name:"Mealprep",desc:"220g cuadrada magra picada cruda + 200g boniato + cebolla, morrón y chauchas",prot:51,carbs:47,fat:11,fib:9,flexible:true,
+       parts:[{name:"Cuadrada picada (220g)",prot:46,carbs:0,fat:11,fib:0},{name:"Boniato (200g)",prot:3,carbs:40,fat:0,fib:6},{name:"Verduras",prot:2,carbs:7,fat:0,fib:3}]},
+      {id:"merienda",time:"17:30",icon:"🧁",name:"Merienda",desc:"Mugcake proteico (30g harina almendra + 1 scoop whey + 2 huevos)",prot:42,carbs:6,fat:27,fib:3,
+       alts:[{name:"🥞 Panqueque chico (c/huevo) + yogur + scoop",prot:60,carbs:26,fat:12,fib:1}]},
+      {id:"cena",time:"21:30",icon:"🥩",name:"Cena",desc:"200g carne (vaca/pollo/cerdo magro) + ensalada sin aceite",prot:44,carbs:8,fat:12,fib:3,flexible:true,
+       alts:[{name:"🐟 Atún de lata + ensalada",prot:32,carbs:8,fat:2,fib:3}],
+       parts:[{name:"Carne (200g)",prot:42,carbs:0,fat:12,fib:0},{name:"Ensalada",prot:2,carbs:8,fat:0,fib:3}]},
     ]
   }
 ];
@@ -359,7 +368,7 @@ function rutinaScn(d){
   return scenarios.find(s=>!s.legacy&&!s.until)||scenarios[0];
 }
 
-const PLANS_REV = 17;
+const PLANS_REV = 18;
 const PLAN_PATCHES = {
   1: [
     {scn:'tarde', meal:'desayuno', desc:'2 panqueques (con chía en la mezcla) + 3-4 huevos revueltos con parmesano + 5g creatina'},
@@ -429,32 +438,32 @@ const PLAN_PATCHES = {
 };
 
 const DISHES = [
-  {id:'nuggets_pollo', emoji:'🍗', name:'Nuggets pollo (AF)', prot:35, carbs:12, fat:7},
-  {id:'pechuga_af', emoji:'🍗', name:'Pechuga crocante (AF)', prot:42, carbs:8, fat:8},
-  {id:'mila_pollo_af', emoji:'🍤', name:'Mila pollo (AF)', prot:38, carbs:15, fat:10},
-  {id:'mila_carne_af', emoji:'🥩', name:'Mila carne (AF)', prot:48, carbs:12, fat:22},
-  {id:'empanadas4', emoji:'🥟', name:'Empanadas x4 (AF)', prot:53, carbs:72, fat:29},
-  {id:'bowl_atun', emoji:'🥑', name:'Bowl atún + palta', prot:32, carbs:12, fat:24},
-  {id:'bife_plancha', emoji:'🥩', name:'Bife plancha (250g)', prot:55, carbs:0, fat:20},
-  {id:'pollo_plancha', emoji:'🍗', name:'Pollo plancha (200g)', prot:46, carbs:0, fat:6},
-  {id:'salmon_plancha', emoji:'🐟', name:'Salmón plancha (180g)', prot:36, carbs:0, fat:20},
-  {id:'tortilla_papa', emoji:'🥔', name:'Tortilla de papa', prot:25, carbs:50, fat:28},
-  {id:'revuelto_qj', emoji:'🍳', name:'Revuelto + queso + jamón', prot:38, carbs:2, fat:28},
-  {id:'tarta_jyq', emoji:'🥧', name:'Tarta jamón y queso', prot:26, carbs:40, fat:24},
-  {id:'noquis_tuco', emoji:'🍝', name:'Ñoquis con tuco', prot:22, carbs:80, fat:12},
-  {id:'fideos_tuco', emoji:'🍝', name:'Fideos tuco + carne', prot:40, carbs:90, fat:20},
-  {id:'pollo_horno', emoji:'🍗', name:'Pollo horno + papa', prot:46, carbs:40, fat:12},
-  {id:'hamburguesa_casera', emoji:'🍔', name:'Hamburguesa casera', prot:35, carbs:38, fat:25},
+  {id:'nuggets_pollo', emoji:'🍗', name:'Nuggets pollo (AF)', prot:35, carbs:12, fat:7, fib:1},
+  {id:'pechuga_af', emoji:'🍗', name:'Pechuga crocante (AF)', prot:42, carbs:8, fat:8, fib:1},
+  {id:'mila_pollo_af', emoji:'🍤', name:'Mila pollo (AF)', prot:38, carbs:15, fat:10, fib:1},
+  {id:'mila_carne_af', emoji:'🥩', name:'Mila carne (AF)', prot:48, carbs:12, fat:22, fib:1},
+  {id:'empanadas4', emoji:'🥟', name:'Empanadas x4 (AF)', prot:53, carbs:72, fat:29, fib:4},
+  {id:'bowl_atun', emoji:'🥑', name:'Bowl atún + palta', prot:32, carbs:12, fat:24, fib:7},
+  {id:'bife_plancha', emoji:'🥩', name:'Bife plancha (250g)', prot:55, carbs:0, fat:20, fib:0},
+  {id:'pollo_plancha', emoji:'🍗', name:'Pollo plancha (200g)', prot:46, carbs:0, fat:6, fib:0},
+  {id:'salmon_plancha', emoji:'🐟', name:'Salmón plancha (180g)', prot:36, carbs:0, fat:20, fib:0},
+  {id:'tortilla_papa', emoji:'🥔', name:'Tortilla de papa', prot:25, carbs:50, fat:28, fib:4},
+  {id:'revuelto_qj', emoji:'🍳', name:'Revuelto + queso + jamón', prot:38, carbs:2, fat:28, fib:0},
+  {id:'tarta_jyq', emoji:'🥧', name:'Tarta jamón y queso', prot:26, carbs:40, fat:24, fib:2},
+  {id:'noquis_tuco', emoji:'🍝', name:'Ñoquis con tuco', prot:22, carbs:80, fat:12, fib:5},
+  {id:'fideos_tuco', emoji:'🍝', name:'Fideos tuco + carne', prot:40, carbs:90, fat:20, fib:6},
+  {id:'pollo_horno', emoji:'🍗', name:'Pollo horno + papa', prot:46, carbs:40, fat:12, fib:4},
+  {id:'hamburguesa_casera', emoji:'🍔', name:'Hamburguesa casera', prot:35, carbs:38, fat:25, fib:2},
 ];
 
 const SIDES = [
-  {id:'arroz', name:'Arroz blanco', emoji:'🍚', prot:4, carbs:43, fat:0},
-  {id:'papa_hervida', name:'Papa hervida', emoji:'🥔', prot:3, carbs:27, fat:0},
-  {id:'pure_papa', name:'Puré de papa', emoji:'🥔', prot:4, carbs:32, fat:5},
-  {id:'batata', name:'Batata horneada', emoji:'🍠', prot:2, carbs:30, fat:0},
-  {id:'fideos', name:'Fideos', emoji:'🍝', prot:8, carbs:43, fat:1},
-  {id:'ensalada', name:'Ensalada verde', emoji:'🥗', prot:1, carbs:3, fat:0},
-  {id:'nada', name:'Sin acompañamiento', emoji:'❌', prot:0, carbs:0, fat:0},
+  {id:'arroz', name:'Arroz blanco', emoji:'🍚', prot:4, carbs:43, fat:0, fib:1},
+  {id:'papa_hervida', name:'Papa hervida', emoji:'🥔', prot:3, carbs:27, fat:0, fib:2},
+  {id:'pure_papa', name:'Puré de papa', emoji:'🥔', prot:4, carbs:32, fat:5, fib:2},
+  {id:'batata', name:'Batata horneada', emoji:'🍠', prot:2, carbs:30, fat:0, fib:4},
+  {id:'fideos', name:'Fideos', emoji:'🍝', prot:8, carbs:43, fat:1, fib:2},
+  {id:'ensalada', name:'Ensalada verde', emoji:'🥗', prot:1, carbs:3, fat:0, fib:2},
+  {id:'nada', name:'Sin acompañamiento', emoji:'❌', prot:0, carbs:0, fat:0, fib:0},
 ];
 
 // Cheats frecuentes: kcal aproximadas de porciones argentinas típicas. Tap = suma al total.
@@ -520,17 +529,41 @@ function scnMacros(scn){
   const p=scn.meals.reduce((s,m)=>s+(m.prot||0),0);
   const c=scn.meals.reduce((s,m)=>s+(m.carbs||0),0);
   const f=scn.meals.reduce((s,m)=>s+(m.fat||0),0);
+  const fib=scn.meals.reduce((s,m)=>s+(m.fib||0),0);
   const kcal=p*4+c*4+f*9;
-  return {p,c,f,kcal};
+  return {p,c,f,fib,kcal};
 }
 
 function mealKcal(m){return (m.prot||0)*4+(m.carbs||0)*4+(m.fat||0)*9;}
+
+// Fibra aproximada (v55): informativa, no entra en kcal. Logs viejos no guardan
+// `fib` → se deriva de catálogo/receta/alts/parts. Receta sin fibra cargada asume
+// la del plan (mealprep suele ser parecido); custom irreconocible = 0.
+const FIB_TARGET=30;
+function mealFib(v,m){
+  if(v.fib!=null) return v.fib;
+  const dishId=v.dish||v.protein;
+  if(dishId){
+    const d=DISHES.find(x=>x.id===dishId), sd=SIDES.find(x=>x.id===v.side);
+    return (d&&d.fib||0)+(sd&&sd.fib||0);
+  }
+  if(v.recipeId){
+    const r=recipeLog.find(x=>x.id===v.recipeId);
+    return r&&r.fib!=null?r.fib:(m&&m.fib||0);
+  }
+  if(!m||!v.name) return 0;
+  const a=(m.alts||[]).find(x=>x.name===v.name);
+  if(a) return a.fib||0;
+  if(v.partial) return (m.parts||[]).filter(p=>v.name.includes(p.name)).reduce((s,p)=>s+(p.fib||0),0);
+  return 0;
+}
 
 function mealTags(m){
   let t='';
   if(m.prot) t+=`<span class="tag tag-p">${m.prot}g prot</span>`;
   if(m.carbs) t+=`<span class="tag tag-c">${m.carbs}g carbs</span>`;
   if(m.fat) t+=`<span class="tag tag-f">${m.fat}g grasas</span>`;
+  if(m.fib) t+=`<span class="tag" style="background:rgba(255,255,255,0.05);color:var(--mt)">~${m.fib}g fibra</span>`;
   t+=`<span class="tag" style="background:rgba(255,255,255,0.05);color:var(--mt)">${mealKcal(m)} kcal</span>`;
   return t;
 }
@@ -601,15 +634,15 @@ function dayKcal(dateStr){
 }
 
 function dayMacros(dateStr){
-  let p=0,c=0,f=0;
+  let p=0,c=0,f=0,fib=0;
   const log=mealLog[dateStr];
-  if(isUnknownDay(dateStr)) return {p:0,c:0,f:0};
+  if(isUnknownDay(dateStr)) return {p:0,c:0,f:0,fib:0};
   if(isAutoDay(dateStr)){
     if(dateStr<=td()) rutinaScn(dateStr).meals.forEach(m=>{
       const v=log&&log.meals?log.meals[m.id]:undefined;
       if(v==='skipped') return;
       const src=(v&&v.custom)?v:effMeal(m,dateStr);
-      p+=src.prot||0; c+=src.carbs||0; f+=src.fat||0;
+      p+=src.prot||0; c+=src.carbs||0; f+=src.fat||0; fib+=mealFib(src,m);
     });
   } else if(log&&log.scenario){
     const scn=scenarios.find(s=>s.id===log.scenario);
@@ -617,10 +650,10 @@ function dayMacros(dateStr){
       const v=log.meals[m.id];
       if(v==='skipped') return;
       const src=(v&&v.custom)?v:m;
-      p+=src.prot||0; c+=src.carbs||0; f+=src.fat||0;
+      p+=src.prot||0; c+=src.carbs||0; f+=src.fat||0; fib+=mealFib(src,m);
     });
   }
-  return {p,c,f};
+  return {p,c,f,fib};
 }
 
 // ── State ──
@@ -720,6 +753,25 @@ function applyPlansMigration(){
   if(storedRev<17){
     const r2=scenarios.find(s=>s.id==='rutina-if2');
     if(r2) r2.meals=r2.meals.map(m=>m.id==='cena'?JSON.parse(JSON.stringify(RIF2_CENA)):m.id==='postre'?JSON.parse(JSON.stringify(RIF2_POSTRE)):m);
+  }
+  // rev 18: psyllium en el postre desde 12/10 (versión nueva, no in-place: cambia
+  // la fibra del día). Además backfill de `fib` en las rutinas guardadas, matcheando
+  // meals por id y alts/parts por nombre contra los defaults.
+  if(storedRev<18){
+    const r2=scenarios.find(s=>s.id==='rutina-if2');
+    if(r2&&!r2.until) r2.until='2026-10-12';
+    if(!scenarios.some(s=>s.id==='rutina-if3')) scenarios.unshift(JSON.parse(JSON.stringify(defScn('rutina-if3'))));
+    const byName=(list,name)=>(list||[]).find(x=>x.name===name);
+    scenarios.filter(s=>!s.legacy).forEach(s=>{
+      const d=defScn(s.id);
+      if(!d) return;
+      s.meals.forEach(m=>{
+        const dm=d.meals.find(x=>x.id===m.id);
+        if(!dm) return;
+        if(m.fib==null) m.fib=dm.fib;
+        ['alts','parts'].forEach(k=>(m[k]||[]).forEach(a=>{const da=byName(dm[k],a.name);if(da&&a.fib==null) a.fib=da.fib;}));
+      });
+    });
   }
   savePlans();
   save("food-plans-rev",PLANS_REV);
@@ -928,7 +980,8 @@ function pickSide(sideId){
     side:side.id,
     prot:dish.prot+side.prot,
     carbs:dish.carbs+side.carbs,
-    fat:dish.fat+side.fat
+    fat:dish.fat+side.fat,
+    fib:(dish.fib||0)+(side.fib||0)
   };
   save("food-log",mealLog);
   closeModal();
@@ -1033,6 +1086,7 @@ function renderToday(){
     <div class="row mb-4"><span class="text-sm fw-700">Proteína</span><span class="mono fw-800" style="color:${protColor}">${dm.p} / ${totalMacros.p}g</span></div>
     <div class="row text-xs text-mt"><span>Carbos</span><span class="mono">${dm.c} / ${totalMacros.c}g</span></div>
     <div class="row text-xs text-mt"><span>Grasas</span><span class="mono">${dm.f} / ${totalMacros.f}g</span></div>
+    <div class="row text-xs text-mt"><span>Fibra (aprox.)</span><span class="mono" style="color:${dm.fib>=FIB_TARGET?'var(--gn)':dm.fib>=FIB_TARGET*0.7?'var(--tx)':'var(--yw)'}">~${dm.fib} / ${FIB_TARGET}g</span></div>
   </div>`;
 
   const _cre=log.creatine;
@@ -1238,6 +1292,7 @@ function renderAutoDay(){
     <div class="row mb-4"><span class="text-sm fw-700">Proteína</span><span class="mono fw-800" style="color:${protColor}">${dm.p} / ${totalMacros.p}g</span></div>
     <div class="row text-xs text-mt"><span>Carbos</span><span class="mono">${dm.c} / ${totalMacros.c}g</span></div>
     <div class="row text-xs text-mt"><span>Grasas</span><span class="mono">${dm.f} / ${totalMacros.f}g</span></div>
+    <div class="row text-xs text-mt"><span>Fibra (aprox.)</span><span class="mono" style="color:${dm.fib>=FIB_TARGET?'var(--gn)':dm.fib>=FIB_TARGET*0.7?'var(--tx)':'var(--yw)'}">~${dm.fib} / ${FIB_TARGET}g</span></div>
   </div>`;
 
   const _cre=log?log.creatine:undefined;
@@ -1376,6 +1431,7 @@ function saveMealParts(mealId){
     prot:chosen.reduce((s,p)=>s+(p.prot||0),0),
     carbs:chosen.reduce((s,p)=>s+(p.carbs||0),0),
     fat:chosen.reduce((s,p)=>s+(p.fat||0),0),
+    fib:chosen.reduce((s,p)=>s+(p.fib||0),0),
   };
   save('food-log',mealLog);
   window._partsSel=null;window._partsMeal=null;
@@ -1404,7 +1460,7 @@ function pickAlt(mealId,altIdx){
   const a=m&&m.alts?m.alts[altIdx]:null;
   if(!a) return;
   const log=getDayLog(activeDate);
-  log.meals[mealId]={custom:true,name:a.name,prot:a.prot||0,carbs:a.carbs||0,fat:a.fat||0};
+  log.meals[mealId]={custom:true,name:a.name,prot:a.prot||0,carbs:a.carbs||0,fat:a.fat||0,fib:a.fib||0};
   save("food-log",mealLog);
   closeModal();
   renderToday();
@@ -1416,7 +1472,7 @@ function showPlan(){
   const scn=scenarios[idx];
   const m=scnMacros(scn);
   let html=`<div class="row mb-6"><div style="font-size:20px;font-weight:800">${scn.label}</div><button class="icon-btn" style="width:32px;height:32px;font-size:13px" onclick="editPlan(${idx})">✎</button></div>`;
-  html+=`<div class="flex gap-8 mb-8"><div class="tag tag-p">${m.p}g prot</div><div class="tag tag-c">${m.c}g carbs</div><div class="tag tag-f">${m.f}g grasas</div></div>`;
+  html+=`<div class="flex gap-8 mb-8"><div class="tag tag-p">${m.p}g prot</div><div class="tag tag-c">${m.c}g carbs</div><div class="tag tag-f">${m.f}g grasas</div><div class="tag" style="background:rgba(255,255,255,0.05);color:var(--mt)">~${m.fib}g fibra</div></div>`;
   html+=`<div class="text-sm mb-20" style="color:var(--ac)"><strong class="mono">${m.kcal}</strong> kcal/día</div>`;
   scn.meals.forEach(m=>{
     const border=m.training?'border-color:rgba(230,149,0,0.25)':'';
@@ -1469,7 +1525,7 @@ function editMeal(mi){
   html+=`<div class="mb-12"><label class="label">HORA</label><input id="em-time" value="${esc(m.time)}" style="${inp}" placeholder="HH:MM"></div>`;
   html+=`<div class="mb-12"><label class="label">ÍCONO</label><input id="em-icon" value="${esc(m.icon)}" style="${inp}"></div>`;
   html+=`<div class="mb-12"><label class="label">DESCRIPCIÓN</label><textarea id="em-desc" style="${inp};resize:vertical;min-height:50px;font-size:14px">${esc(m.desc)}</textarea></div>`;
-  html+=`<div class="flex gap-8 mb-12"><div class="flex-1"><label class="label">PROT (g)</label><input id="em-prot" type="number" value="${m.prot||0}" style="${inpM}"></div><div class="flex-1"><label class="label">CARBS (g)</label><input id="em-carbs" type="number" value="${m.carbs||0}" style="${inpM}"></div><div class="flex-1"><label class="label">GRASAS (g)</label><input id="em-fat" type="number" value="${m.fat||0}" style="${inpM}"></div></div>`;
+  html+=`<div class="flex gap-8 mb-12"><div class="flex-1"><label class="label">PROT (g)</label><input id="em-prot" type="number" value="${m.prot||0}" style="${inpM}"></div><div class="flex-1"><label class="label">CARBS (g)</label><input id="em-carbs" type="number" value="${m.carbs||0}" style="${inpM}"></div><div class="flex-1"><label class="label">GRASAS (g)</label><input id="em-fat" type="number" value="${m.fat||0}" style="${inpM}"></div><div class="flex-1"><label class="label">FIBRA (g)</label><input id="em-fib" type="number" value="${m.fib||0}" style="${inpM}"></div></div>`;
   html+=`<div class="flex gap-8 mb-12"><div class="flex-1"><label class="label">ENTRENO</label><select id="em-training" style="${inp}"><option value="0"${!m.training?' selected':''}>No</option><option value="1"${m.training?' selected':''}>Sí</option></select></div><div class="flex-1"><label class="label">CERO CARBOS</label><select id="em-zero" style="${inp}"><option value="0"${!m.zeroCarbos?' selected':''}>No</option><option value="1"${m.zeroCarbos?' selected':''}>Sí</option></select></div></div>`;
   html+=`<button class="btn mb-12" onclick="saveMealEdit()">Guardar</button>`;
   html+=`<button class="btn-out mb-12" onclick="editPlan(${editPlanIdx})">← Volver</button>`;
@@ -1480,7 +1536,7 @@ function editMeal(mi){
 function saveMealEdit(){
   const m=scenarios[editPlanIdx].meals[editMealIdx];
   m.name=$("em-name").value;m.time=$("em-time").value;m.icon=$("em-icon").value;m.desc=$("em-desc").value;
-  m.prot=parseInt($("em-prot").value)||0;m.carbs=parseInt($("em-carbs").value)||0;m.fat=parseInt($("em-fat").value)||0;
+  m.prot=parseInt($("em-prot").value)||0;m.carbs=parseInt($("em-carbs").value)||0;m.fat=parseInt($("em-fat").value)||0;m.fib=parseInt($("em-fib").value)||0;
   m.training=$("em-training").value==="1";m.zeroCarbos=$("em-zero").value==="1";
   savePlans();editPlan(editPlanIdx);
 }
@@ -1620,7 +1676,8 @@ function dayDetail(ds){
     <div class="row mb-4"><span class="text-sm fw-700">Total del día</span><span class="mono fw-800 text-ac">${dayKcal(ds)} kcal</span></div>
     <div class="row text-xs" style="margin-bottom:2px"><span class="text-mt">Proteína</span><span class="mono fw-700" style="color:${protColor}">${dm.p} / ${tg.p}g</span></div>
     <div class="row text-xs text-mt" style="margin-bottom:2px"><span>Carbos</span><span class="mono">${dm.c} / ${tg.c}g</span></div>
-    <div class="row text-xs text-mt"><span>Grasas</span><span class="mono">${dm.f} / ${tg.f}g</span></div>
+    <div class="row text-xs text-mt" style="margin-bottom:2px"><span>Grasas</span><span class="mono">${dm.f} / ${tg.f}g</span></div>
+    <div class="row text-xs text-mt"><span>Fibra (aprox.)</span><span class="mono">~${dm.fib} / ${FIB_TARGET}g</span></div>
   </div>`;
   const _w=load('food-weight',[]).find(w=>w.date===ds);
   if(_w) html+=`<div class="row" style="padding:10px 4px 0"><span class="text-sm fw-700">⚖️ Peso</span><span class="text-sm mono fw-700 text-ac">${_w.kg} kg</span></div>`;
@@ -1882,15 +1939,15 @@ function effMeal(m,dateStr){
   const a=mealprepFor(m.id,dateStr);
   if(a){
     return {...m,icon:a.r.emoji||'🍲',desc:'Mealprep semanal: '+a.r.name+' (1 porción) · hasta '+fd(a.mp.end),
-            prot:a.r.prot||0,carbs:a.r.carbs||0,fat:a.r.fat||0};
+            prot:a.r.prot||0,carbs:a.r.carbs||0,fat:a.r.fat||0,fib:a.r.fib!=null?a.r.fib:m.fib};
   }
   return m;
 }
 
 function dayTargetMacros(dateStr){
-  let p=0,c=0,f=0;
-  rutinaScn(dateStr).meals.forEach(m=>{const e=effMeal(m,dateStr);p+=e.prot||0;c+=e.carbs||0;f+=e.fat||0;});
-  return {p,c,f,kcal:p*4+c*4+f*9};
+  let p=0,c=0,f=0,fib=0;
+  rutinaScn(dateStr).meals.forEach(m=>{const e=effMeal(m,dateStr);p+=e.prot||0;c+=e.carbs||0;f+=e.fat||0;fib+=e.fib||0;});
+  return {p,c,f,fib,kcal:p*4+c*4+f*9};
 }
 
 function setMealprep(rid,mealId,start){
@@ -1952,7 +2009,7 @@ function viewRecipe(id){
   const r=recipeLog.find(x=>x.id===id);
   if(!r) return;
   let html=`<div style="font-size:18px;font-weight:800;margin-bottom:4px">${esc(r.emoji||'📖')} ${esc(r.name)}</div>`;
-  html+=`<div class="text-xs text-mt mono mb-12">${r.prot||0}p · ${r.carbs||0}c · ${r.fat||0}f · ${mealKcal(r)} kcal por porción${r.servings?` · rinde ${r.servings} porciones`:''}</div>`;
+  html+=`<div class="text-xs text-mt mono mb-12">${r.prot||0}p · ${r.carbs||0}c · ${r.fat||0}f${r.fib!=null?' · '+r.fib+'g fibra':''} · ${mealKcal(r)} kcal por porción${r.servings?` · rinde ${r.servings} porciones`:''}</div>`;
   html+='<div style="max-height:50vh;overflow-y:auto;padding-right:4px">';
   if(r.ingredients&&r.ingredients.length){
     html+='<div class="label" style="margin-top:8px">INGREDIENTES</div>';
@@ -1987,7 +2044,7 @@ function openRecipeForm(id,draft){
   html+=`<div class="flex gap-8 mb-12"><div class="flex-1" style="flex:3"><label class="label">NOMBRE</label><input id="rc-name" value="${esc(r.name||'')}" style="${inp}"></div><div class="flex-1"><label class="label">EMOJI</label><input id="rc-emoji" value="${esc(r.emoji||'🍲')}" style="${inp};text-align:center"></div></div>`;
   html+=`<div class="flex gap-8 mb-12"><div class="flex-1"><label class="label">RINDE (porciones)</label><input id="rc-serv" type="number" inputmode="numeric" value="${r.servings||4}" style="${inpM}"></div></div>`;
   html+=`<div class="label">MACROS POR PORCIÓN (g)</div>`;
-  html+=`<div class="flex gap-8 mb-8"><div class="flex-1"><label class="label">PROT</label><input id="rc-prot" type="number" value="${r.prot||0}" style="${inpM}" oninput="updRecipeKcal()"></div><div class="flex-1"><label class="label">CARBS</label><input id="rc-carbs" type="number" value="${r.carbs||0}" style="${inpM}" oninput="updRecipeKcal()"></div><div class="flex-1"><label class="label">GRASAS</label><input id="rc-fat" type="number" value="${r.fat||0}" style="${inpM}" oninput="updRecipeKcal()"></div></div>`;
+  html+=`<div class="flex gap-8 mb-8"><div class="flex-1"><label class="label">PROT</label><input id="rc-prot" type="number" value="${r.prot||0}" style="${inpM}" oninput="updRecipeKcal()"></div><div class="flex-1"><label class="label">CARBS</label><input id="rc-carbs" type="number" value="${r.carbs||0}" style="${inpM}" oninput="updRecipeKcal()"></div><div class="flex-1"><label class="label">GRASAS</label><input id="rc-fat" type="number" value="${r.fat||0}" style="${inpM}" oninput="updRecipeKcal()"></div><div class="flex-1"><label class="label">FIBRA</label><input id="rc-fib" type="number" value="${r.fib!=null?r.fib:''}" placeholder="?" style="${inpM}"></div></div>`;
   html+=`<div id="rc-kcal" class="text-sm mono fw-700 mb-12" style="text-align:center;color:var(--ac)">= ${mealKcal(r)} kcal por porción</div>`;
   html+=`<div class="mb-12"><label class="label">INGREDIENTES (uno por línea, con cantidad)</label><textarea id="rc-ing" style="${inp};resize:vertical;min-height:90px;font-size:14px">${esc((r.ingredients||[]).join('\n'))}</textarea></div>`;
   html+=`<div class="mb-12"><label class="label">PASO A PASO (uno por línea)</label><textarea id="rc-steps" style="${inp};resize:vertical;min-height:90px;font-size:14px">${esc((r.steps||[]).join('\n'))}</textarea></div>`;
@@ -2015,6 +2072,7 @@ function saveRecipeForm(){
     prot:parseInt($('rc-prot').value)||0,
     carbs:parseInt($('rc-carbs').value)||0,
     fat:parseInt($('rc-fat').value)||0,
+    ...($('rc-fib').value.trim()!==''?{fib:parseInt($('rc-fib').value)||0}:{}),
     ingredients:$('rc-ing').value.split('\n').map(s=>s.trim()).filter(Boolean),
     steps:$('rc-steps').value.split('\n').map(s=>s.trim()).filter(Boolean),
   };
@@ -2054,12 +2112,13 @@ async function importRecipePhoto(event){
   try{
     const imgPart=await recipeImgPart(file);
     const out=await geminiCall(
-      [imgPart,{text:'La imagen es una receta de cocina (puede estar en cualquier idioma). Traducila al español rioplatense y estructurala. Calculá los macros POR PORCIÓN en gramos a partir de los ingredientes; si la receta no dice cuántas porciones rinde, estimalo razonablemente para mealprep. Ingredientes con cantidades exactas (gramos/unidades). Pasos concisos.'}],
+      [imgPart,{text:'La imagen es una receta de cocina (puede estar en cualquier idioma). Traducila al español rioplatense y estructurala. Calculá los macros y la fibra POR PORCIÓN en gramos a partir de los ingredientes; si la receta no dice cuántas porciones rinde, estimalo razonablemente para mealprep. Ingredientes con cantidades exactas (gramos/unidades). Pasos concisos.'}],
       {type:'OBJECT',properties:{
         name:{type:'STRING'},
         emoji:{type:'STRING',description:'un solo emoji que represente el plato'},
         servings:{type:'INTEGER'},
         prot:{type:'INTEGER'},carbs:{type:'INTEGER'},fat:{type:'INTEGER'},
+        fib:{type:'INTEGER',description:'fibra dietaria por porción en gramos'},
         ingredients:{type:'ARRAY',items:{type:'STRING'}},
         steps:{type:'ARRAY',items:{type:'STRING'}}
       },required:['name','servings','prot','carbs','fat','ingredients','steps']},
